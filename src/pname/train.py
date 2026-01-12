@@ -6,6 +6,7 @@ from pname.model import MyAwesomeModel
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
+
 def train(lr: float = 1e-3, batch_size: int = 32, epochs: int = 10) -> None:
     """Train a model on MNIST."""
     print("Training day and night")
