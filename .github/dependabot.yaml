@@ -1,6 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: "uv"
-    directory: "/Users/maks/Library/CloudStorage/OneDrive-DanmarksTekniskeUniversitet/DTU/11. semester/02476 Machine Learning Operations/MLOps_projectrepo/pyproject.toml"  # path to pyproject.toml
+    directory: "/pyproject.toml"  # path to pyproject.toml
     schedule:
       interval: "weekly"
