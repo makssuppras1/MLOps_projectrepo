@@ -1,3 +1,11 @@
+# Project description
+
+When you have come up with an idea, write a project description. The description is the delivery for today and should be at least 300 words. Try to answer the following questions in the description:
+- Overall goal of the project
+- What data are you going to run on (initially, may change)
+- What models do you expect to use
+
+
 # pname
 
 Nej
