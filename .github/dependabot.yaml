@@ -1,6 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: "uv"
-    directory: "/pyproject.toml"  # path to pyproject.toml
+    directory: "/pyproject.toml" 
     schedule:
       interval: "weekly"
