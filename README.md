@@ -1,9 +1,25 @@
 # Project description
 
-When you have come up with an idea, write a project description. The description is the delivery for today and should be at least 300 words. Try to answer the following questions in the description:
-- Overall goal of the project
-- What data are you going to run on (initially, may change)
-- What models do you expect to use
+The primary goal of this project is to build a functional MLOps pipeline for a scientific paper classification task. While the underlying machine learning problem is to categorize papers based on citation networks, the "product" of this project is the infrastructure surrounding the model, not the model itself.
+
+We aim to take a transformer model, train it for our text classification purposes and wrap it in professional DevOps practices. The goal is to achieve three core milestones:
+- **Reproducibility:** Ensuring anyone can run our code and get the same results.
+- **Automation:** Using tools to handle training and testing automatically.
+- **Monitoring:** Tracking our experiments so we can see what works without manual note-taking.
+
+**Data Strategy**
+
+We will start with the [arXiv Scientific Research Papers Dataset](https://www.kaggle.com/datasets/sumitm004/arxiv-scientific-research-papers-dataset), which consists of 136,238 scientific papers. Our MLOps focus for this data will be on Data Version Control (DVC). Instead of just having a local folder of data, we will use DVC to track versions of our dataset. This way, if we update the data or add new papers later, we can "roll back" to previous versions just like we do with code in Git.
+
+**Models and Tools**
+
+We will be using the DistilBERT base model from hugging face, and training it using our dataset for the purpose of classifying the research article categories based on their summary. We will keep the architecture simple so we can spend our energy on the following MLOps stack:
+- **Docker:** We will containerize our code so it runs the same on every team member's laptop, avoiding "it works on my machine" errors.
+- **Weights & Biases (WandB):** We will use this to automatically log our loss curves and accuracy, making it easy to compare different training runs.
+- **GitHub Actions:** We will implement basic CI (Continuous Integration) to automatically run "linter" checks (like Flake8) to ensure our code stays clean and readable.
+
+By the end of the project, we expect to have a system where a single command can pull the data, build the environment, and train a reliable classification model.
+
 
 
 # pname
