@@ -20,5 +20,5 @@ WORKDIR /
 ENV UV_LINK_MODE=copy
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-cache --no-install-project
 
-# Entrypoint for training script
-ENTRYPOINT ["uv", "run", "src/pname/train.py"]
+# Entrypoint for evaluation script
+ENTRYPOINT ["uv", "run", "src/pname/evaluate.py"]

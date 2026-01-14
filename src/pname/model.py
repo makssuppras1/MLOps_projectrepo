@@ -1,17 +1,49 @@
 import torch
 from torch import nn
+from omegaconf import DictConfig
 
 
 class MyAwesomeModel(nn.Module):
     """My awesome model."""
 
-    def __init__(self) -> None:
+    def __init__(self, model_cfg: DictConfig = None) -> None:
         super().__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.conv3 = nn.Conv2d(64, 128, 3, 1)
-        self.dropout = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(128, 10)
+        if model_cfg is None:
+            # Default values for backward compatibility
+            model_cfg = DictConfig({
+                'conv1': {'in_channels': 1, 'out_channels': 32, 'kernel_size': 3, 'stride': 1},
+                'conv2': {'in_channels': 32, 'out_channels': 64, 'kernel_size': 3, 'stride': 1},
+                'conv3': {'in_channels': 64, 'out_channels': 128, 'kernel_size': 3, 'stride': 1},
+                'dropout': 0.5,
+                'fc1': {'in_features': 128, 'out_features': 10},
+                'max_pool': {'kernel_size': 2, 'stride': 2}
+            })
+        
+        self.conv1 = nn.Conv2d(
+            model_cfg.conv1.in_channels,
+            model_cfg.conv1.out_channels,
+            model_cfg.conv1.kernel_size,
+            model_cfg.conv1.stride
+        )
+        self.conv2 = nn.Conv2d(
+            model_cfg.conv2.in_channels,
+            model_cfg.conv2.out_channels,
+            model_cfg.conv2.kernel_size,
+            model_cfg.conv2.stride
+        )
+        self.conv3 = nn.Conv2d(
+            model_cfg.conv3.in_channels,
+            model_cfg.conv3.out_channels,
+            model_cfg.conv3.kernel_size,
+            model_cfg.conv3.stride
+        )
+        self.dropout = nn.Dropout(model_cfg.dropout)
+        self.fc1 = nn.Linear(
+            model_cfg.fc1.in_features,
+            model_cfg.fc1.out_features
+        )
+        self.max_pool_kernel = model_cfg.max_pool.kernel_size
+        self.max_pool_stride = model_cfg.max_pool.stride
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.ndim != 4:
@@ -20,11 +52,11 @@ class MyAwesomeModel(nn.Module):
             raise ValueError('Expected each sample to have shape [1, 28, 28]')
         """Forward pass."""
         x = torch.relu(self.conv1(x))
-        x = torch.max_pool2d(x, 2, 2)
+        x = torch.max_pool2d(x, self.max_pool_kernel, self.max_pool_stride)
         x = torch.relu(self.conv2(x))
-        x = torch.max_pool2d(x, 2, 2)
+        x = torch.max_pool2d(x, self.max_pool_kernel, self.max_pool_stride)
         x = torch.relu(self.conv3(x))
-        x = torch.max_pool2d(x, 2, 2)
+        x = torch.max_pool2d(x, self.max_pool_kernel, self.max_pool_stride)
         x = torch.flatten(x, 1)
         x = self.dropout(x)
         return self.fc1(x)

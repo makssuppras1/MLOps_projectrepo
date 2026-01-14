@@ -1,0 +1,40 @@
+model:
+  conv1:
+    in_channels: 1
+    out_channels: 32
+    kernel_size: 3
+    stride: 1
+  conv2:
+    in_channels: 32
+    out_channels: 64
+    kernel_size: 3
+    stride: 1
+  conv3:
+    in_channels: 64
+    out_channels: 128
+    kernel_size: 3
+    stride: 1
+  dropout: 0.5
+  fc1:
+    in_features: 128
+    out_features: 10
+  max_pool:
+    kernel_size: 2
+    stride: 2
+training:
+  seed: 42
+  batch_size: 32
+  epochs: 10
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.001
+  loss_fn:
+    _target_: torch.nn.CrossEntropyLoss
+  log_interval: 100
+  model_save_path: trained_model.pt
+  figure_save_path: reports/figures/training_statistics.png
+  figure_size:
+  - 15
+  - 5
+experiment:
+  stuff_that_i_want_to_add: 42
