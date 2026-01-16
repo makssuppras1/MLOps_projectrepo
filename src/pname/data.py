@@ -1,25 +1,22 @@
+import csv
+import json
+import random
 from pathlib import Path
 
 import torch
 import typer
 
 
-def normalize(images: torch.Tensor) -> torch.Tensor:
-    """Normalize images to have mean 0 and std 1."""
-    mean = images.mean()
-    std = images.std()
-    return (images - mean) / std
-
-
 def preprocess_data(
     raw_dir: str = typer.Argument(..., help="Path to raw data directory"),
     processed_dir: str = typer.Argument(..., help="Path to processed data directory"),
+    test_split: float = typer.Option(0.2, help="Fraction of data to use for testing"),
+    seed: int = typer.Option(42, help="Random seed for train/test split"),
 ) -> None:
-    """Process raw data and save it to processed directory.
+    """Process raw ArXiv data and save it to processed directory.
 
-    Loads corruptmnist files from raw_dir, combines them into single tensors,
-    normalizes the images (using training statistics for both train and test),
-    and saves to processed_dir.
+    Loads ArXiv dataset from raw_dir, processes text (title + abstract),
+    encodes categories as labels, splits into train/test, and saves to processed_dir.
     """
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
@@ -27,60 +24,99 @@ def preprocess_data(
     # Create processed directory if it doesn't exist
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load training data (6 files: train_images_0.pt through train_images_5.pt)
-    train_images, train_target = [], []
-    for i in range(6):
-        train_images.append(torch.load(raw_dir / f"train_images_{i}.pt"))
-        train_target.append(torch.load(raw_dir / f"train_target_{i}.pt"))
-    train_images = torch.cat(train_images)
-    train_target = torch.cat(train_target)
+    # Find CSV file in raw directory
+    csv_files = list(raw_dir.glob("*.csv"))
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV file found in {raw_dir}")
+    csv_file = csv_files[0]  # Use first CSV file found
 
-    # Load test data
-    test_images: torch.Tensor = torch.load(raw_dir / "test_images.pt")
-    test_target: torch.Tensor = torch.load(raw_dir / "test_target.pt")
+    # Load and process data
+    texts = []
+    categories = []
 
-    # Convert to proper types and add channel dimension if needed
-    train_images = train_images.unsqueeze(1).float()
-    test_images = test_images.unsqueeze(1).float()
-    train_target = train_target.long()
-    test_target = test_target.long()
+    with open(csv_file, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            # Combine title and abstract
+            title = row.get("title", "").strip()
+            abstract = row.get("abstract", "").strip()
+            text = f"{title} {abstract}".strip()
 
-    # Normalize using training statistics (standard practice)
-    # Calculate mean and std from training data
-    train_mean = train_images.mean()
-    train_std = train_images.std()
+            # Get category (use first category if multiple)
+            category = row.get("categories", "").strip()
+            if not category:
+                continue  # Skip rows without category
 
-    # Normalize both train and test using training statistics
-    train_images = (train_images - train_mean) / train_std
-    test_images = (test_images - train_mean) / train_std
+            if text:  # Only add if we have text
+                texts.append(text)
+                categories.append(category)
+
+    # Encode categories as integer labels
+    unique_categories = sorted(set(categories))
+    category_to_label = {cat: idx for idx, cat in enumerate(unique_categories)}
+    labels = [category_to_label[cat] for cat in categories]
+
+    # Split into train and test
+    random.seed(seed)
+    indices = list(range(len(texts)))
+    random.shuffle(indices)
+
+    split_idx = int(len(indices) * (1 - test_split))
+    train_indices = indices[:split_idx]
+    test_indices = indices[split_idx:]
+
+    train_texts = [texts[i] for i in train_indices]
+    train_labels = [labels[i] for i in train_indices]
+    test_texts = [texts[i] for i in test_indices]
+    test_labels = [labels[i] for i in test_indices]
 
     # Save processed data
-    torch.save(train_images, processed_dir / "train_images.pt")
-    torch.save(train_target, processed_dir / "train_target.pt")
-    torch.save(test_images, processed_dir / "test_images.pt")
-    torch.save(test_target, processed_dir / "test_target.pt")
+    with open(processed_dir / "train_texts.json", "w", encoding="utf-8") as f:
+        json.dump(train_texts, f, ensure_ascii=False)
+    torch.save(torch.tensor(train_labels, dtype=torch.long), processed_dir / "train_labels.pt")
+
+    with open(processed_dir / "test_texts.json", "w", encoding="utf-8") as f:
+        json.dump(test_texts, f, ensure_ascii=False)
+    torch.save(torch.tensor(test_labels, dtype=torch.long), processed_dir / "test_labels.pt")
+
+    # Save category mapping
+    with open(processed_dir / "category_mapping.json", "w", encoding="utf-8") as f:
+        json.dump(category_to_label, f, ensure_ascii=False)
 
     print(f"Processed data saved to {processed_dir}")
-    print(f"Training set size: {len(train_images)}")
-    print(f"Test set size: {len(test_images)}")
-    print(f"Normalized - Mean: {train_images.mean():.6f}, Std: {train_images.std():.6f}")
+    print(f"Training set size: {len(train_texts)}")
+    print(f"Test set size: {len(test_texts)}")
+    print(f"Number of categories: {len(unique_categories)}")
 
 
-def corrupt_mnist() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """Return train and test datasets for corrupt MNIST."""
-    train_images = torch.load("data/processed/train_images.pt")
-    train_target = torch.load("data/processed/train_target.pt")
-    test_images = torch.load("data/processed/test_images.pt")
-    test_target = torch.load("data/processed/test_target.pt")
+class ArXivDataset(torch.utils.data.Dataset):
+    """Dataset for ArXiv papers."""
 
-    # Ensure proper dtypes to avoid NNPack errors
-    train_images = train_images.float()
-    test_images = test_images.float()
-    train_target = train_target.long()
-    test_target = test_target.long()
+    def __init__(self, texts: list[str], labels: torch.Tensor) -> None:
+        self.texts = texts
+        self.labels = labels
 
-    train_set = torch.utils.data.TensorDataset(train_images, train_target)
-    test_set = torch.utils.data.TensorDataset(test_images, test_target)
+    def __len__(self) -> int:
+        return len(self.texts)
+
+    def __getitem__(self, idx: int) -> tuple[str, torch.Tensor]:
+        return self.texts[idx], self.labels[idx]
+
+
+def arxiv_dataset() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
+    """Return train and test datasets for ArXiv papers."""
+    processed_dir = Path("data/processed")
+
+    with open(processed_dir / "train_texts.json", "r", encoding="utf-8") as f:
+        train_texts = json.load(f)
+    train_labels = torch.load(processed_dir / "train_labels.pt").long()
+
+    with open(processed_dir / "test_texts.json", "r", encoding="utf-8") as f:
+        test_texts = json.load(f)
+    test_labels = torch.load(processed_dir / "test_labels.pt").long()
+
+    train_set = ArXivDataset(train_texts, train_labels)
+    test_set = ArXivDataset(test_texts, test_labels)
     return train_set, test_set
 
 
