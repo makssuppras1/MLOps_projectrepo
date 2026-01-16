@@ -7,9 +7,25 @@ from transformers import DistilBertModel
 
 
 class MyAwesomeModel(nn.Module):
-    """DistilBERT-based multi-class text classifier."""
+    """
+    DistilBERT-based multi-class text classifier.
 
-    def __init__(self, model_cfg: DictConfig = None) -> None:
+    Uses a pretrained DistilBERT encoder with a custom classification head
+    for text classification tasks. Supports configurable number of labels,
+    dropout, and encoder freezing.
+    """
+
+    def __init__(self, model_cfg: Optional[DictConfig] = None) -> None:
+        """
+        Initialize the DistilBERT text classifier.
+
+        Args:
+            model_cfg: Optional configuration dictionary. If None, uses default values:
+                - num_labels: 5
+                - model_name: 'distilbert-base-uncased'
+                - dropout: 0.1
+                - freeze_encoder: False
+        """
         super().__init__()
         if model_cfg is None:
             # Default values for backward compatibility
