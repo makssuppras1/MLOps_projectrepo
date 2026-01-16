@@ -179,3 +179,4 @@ cython_debug/
 # Docker guide notes (personal learning material)
 docker_guide.md
 gcloud_guide.md
+/data
