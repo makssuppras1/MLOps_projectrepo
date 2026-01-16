@@ -12,6 +12,7 @@ COPY pyproject.toml pyproject.toml
 COPY README.md README.md
 COPY src/ src/
 COPY data/ data/
+COPY configs/ configs/
 
 # Set working directory
 WORKDIR /
