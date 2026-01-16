@@ -14,15 +14,33 @@ uv run python src/pname/train.py training.profile=true
 
 Profiling results are saved to `outputs/profiling/`:
 
-- **cProfile stats**: `cprofile_stats.prof` - Analyze with:
-  ```python
-  import pstats
-  stats = pstats.Stats('outputs/profiling/cprofile_stats.prof')
-  stats.sort_stats('cumulative').print_stats(20)
-  ```
+### cProfile Results
 
-- **PyTorch traces**: `trace_*.json` - View in Chrome:
-  1. Open `chrome://tracing`
-  2. Load the trace file
+**File**: `cprofile_stats.prof`
 
-That's it!
+**Option 1: Using snakeviz (recommended)**
+```bash
+uv run snakeviz outputs/profiling/cprofile_stats.prof
+```
+Opens interactive visualization in your browser.
+
+**Option 2: Using pstats**
+```python
+import pstats
+stats = pstats.Stats('outputs/profiling/cprofile_stats.prof')
+stats.sort_stats('cumulative').print_stats(20)
+```
+
+### PyTorch Profiler Results
+
+**Chrome traces**: `trace_*.json`
+1. Open `chrome://tracing` in Chrome/Edge
+2. Load the trace file
+
+**TensorBoard (recommended)**
+```bash
+tensorboard --logdir=outputs/profiling/tensorboard
+```
+Then open http://localhost:6006/#pytorch_profiler
+
+The profiler automatically prints a summary table of top operations by CPU time after training completes.
