@@ -1,6 +1,6 @@
-# @package _global_
 # Experiment 1: Default configuration
 # This file can override any parameters from model_conf or training_conf
+# @package _global_
 training:
   seed: 42
   batch_size: 32

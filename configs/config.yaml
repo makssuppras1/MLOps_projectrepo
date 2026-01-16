@@ -2,4 +2,5 @@
 defaults:
   - model_conf
   - training_conf
+  - experiment: null  # Can be overridden with experiment=exp1, experiment=exp2, etc.
   - _self_
