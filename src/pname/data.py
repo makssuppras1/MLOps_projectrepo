@@ -2,6 +2,7 @@ from pathlib import Path
 
 import torch
 import typer
+from loguru import logger
 
 
 def normalize(images: torch.Tensor) -> torch.Tensor:
@@ -60,18 +61,20 @@ def preprocess_data(
     torch.save(test_images, processed_dir / "test_images.pt")
     torch.save(test_target, processed_dir / "test_target.pt")
 
-    print(f"Processed data saved to {processed_dir}")
-    print(f"Training set size: {len(train_images)}")
-    print(f"Test set size: {len(test_images)}")
-    print(f"Normalized - Mean: {train_images.mean():.6f}, Std: {train_images.std():.6f}")
+    logger.info(f"Processed data saved to {processed_dir}")
+    logger.info(f"Training set size: {len(train_images)}")
+    logger.info(f"Test set size: {len(test_images)}")
+    logger.info(f"Normalized - Mean: {train_images.mean():.6f}, Std: {train_images.std():.6f}")
 
 
 def corrupt_mnist() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Return train and test datasets for corrupt MNIST."""
+    logger.debug("Loading processed data from data/processed/")
     train_images = torch.load("data/processed/train_images.pt")
     train_target = torch.load("data/processed/train_target.pt")
     test_images = torch.load("data/processed/test_images.pt")
     test_target = torch.load("data/processed/test_target.pt")
+    logger.debug(f"Loaded train: {len(train_images)} samples, test: {len(test_images)} samples")
 
     # Ensure proper dtypes to avoid NNPack errors
     train_images = train_images.float()
