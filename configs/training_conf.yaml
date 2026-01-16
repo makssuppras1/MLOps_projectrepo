@@ -19,3 +19,6 @@ training:
   model_save_path: "trained_model.pt"  # Default name for reproducibility tester
   figure_save_path: "reports/figures/training_statistics.png"
   figure_size: [15, 5]
+
+  # Profiling
+  profile: false  # Set to true to enable profiling

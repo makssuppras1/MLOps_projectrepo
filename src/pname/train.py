@@ -1,15 +1,23 @@
-import logging
+import os
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import torch
 import hydra
+import wandb
+from dotenv import load_dotenv
+from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
+from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from transformers import DistilBertTokenizer
 
 from pname.data import arxiv_dataset
 from pname.model import MyAwesomeModel
+from pname.profiler import profile_training
 
-log = logging.getLogger(__name__)
+# Load environment variables
+load_dotenv()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
@@ -54,7 +62,7 @@ def train(cfg: DictConfig) -> None:
 
     # Set random seed for reproducibility
     set_seed(cfg.training.seed)
-    log.info(f"Random seed set to: {cfg.training.seed}")
+    logger.info(f"Random seed set to: {cfg.training.seed}")
 
     # Initialize tokenizer
     tokenizer = DistilBertTokenizer.from_pretrained(cfg.model.model_name)
@@ -118,8 +126,10 @@ def train(cfg: DictConfig) -> None:
     log.info("Training complete")
 
     # Save model
-    torch.save(model.state_dict(), cfg.training.model_save_path)
-    log.info(f"Model saved to {cfg.training.model_save_path}")
+    model_save_path = Path(cfg.training.model_save_path)
+    model_save_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), model_save_path)
+    logger.info(f"Model saved to {model_save_path}")
 
     # Save training statistics plot
     fig, axs = plt.subplots(1, 2, figsize=tuple(cfg.training.figure_size))
@@ -131,8 +141,38 @@ def train(cfg: DictConfig) -> None:
     axs[1].set_title("Train accuracy")
     axs[1].set_xlabel("Iteration")
     axs[1].set_ylabel("Accuracy")
-    fig.savefig(cfg.training.figure_save_path)
-    log.info(f"Training statistics saved to {cfg.training.figure_save_path}")
+    plt.tight_layout()
+
+    figure_save_path = Path(cfg.training.figure_save_path)
+    figure_save_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(figure_save_path)
+    logger.info(f"Training statistics saved to {figure_save_path}")
+
+    # Log plot to wandb
+    if wandb_initialized:
+        wandb.log({"train/training_statistics": wandb.Image(fig)})
+        plt.close(fig)
+
+    # Log model as artifact
+    if wandb_initialized:
+        artifact = wandb.Artifact(
+            name=f"model-{wandb.run.id}",
+            type="model",
+            description=f"Trained model from run {wandb.run.id}",
+            metadata={
+                "epochs": cfg.training.epochs,
+                "batch_size": cfg.training.batch_size,
+                "final_loss": statistics["train_loss"][-1] if statistics["train_loss"] else None,
+                "final_accuracy": statistics["train_accuracy"][-1] if statistics["train_accuracy"] else None,
+            }
+        )
+        artifact.add_file(str(model_save_path))
+        wandb.log_artifact(artifact)
+        logger.info("Model logged as wandb artifact")
+
+        # Finish wandb run
+        wandb.finish()
+        logger.info("Wandb run finished")
 
 
 @hydra.main(version_base=None, config_path="../../configs", config_name="config")
