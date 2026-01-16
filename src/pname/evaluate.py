@@ -13,7 +13,9 @@ def evaluate(model_checkpoint: str) -> None:
 
     model = MyAwesomeModel().to(DEVICE)
     model = model.float()
-    model.load_state_dict(torch.load(model_checkpoint))
+    # Load model checkpoint, mapping to CPU first to handle cross-platform compatibility
+    checkpoint = torch.load(model_checkpoint, map_location=DEVICE)
+    model.load_state_dict(checkpoint)
 
     _, test_set = corrupt_mnist()
     test_dataloader = torch.utils.data.DataLoader(test_set, batch_size=32)
