@@ -1,6 +1,130 @@
 outs:
-- md5: 47675bc9ad9f67db0cd14a045c6cfa7b.dir
-  size: 222815544
-  nfiles: 18
-  hash: md5
+- hash: md5
   path: data
+  files:
+  - relpath: processed/test_images.pt
+    md5: e28c112248031131a9e047c47c6aa515
+    size: 15681200
+    cloud:
+      storage:
+        etag: 089df2e195979092031001
+        version_id: '1768570672937245'
+  - relpath: processed/test_target.pt
+    md5: 4772676697fef9d0d73f999507f4c02a
+    size: 81200
+    cloud:
+      storage:
+        etag: 08f7d0cd90979092031001
+        version_id: '1768570662119543'
+  - relpath: processed/train_images.pt
+    md5: f68b1d893d4d2c1aa860efad0a573a66
+    size: 94081205
+    cloud:
+      storage:
+        etag: 08dcb4b690979092031001
+        version_id: '1768570661739100'
+  - relpath: processed/train_target.pt
+    md5: 3dcaa7b344f58f285a1cdc644458a6bd
+    size: 241205
+    cloud:
+      storage:
+        etag: 08acd4c290979092031001
+        version_id: '1768570661939756'
+  - relpath: raw/test_images.pt
+    md5: dbaef582b7c62889340e79e408b1eb81
+    size: 15680759
+    cloud:
+      storage:
+        etag: 08aae8e295979092031001
+        version_id: '1768570672952362'
+  - relpath: raw/test_target.pt
+    md5: 07a46d22581416c598f8b052816e3f56
+    size: 80759
+    cloud:
+      storage:
+        etag: 08838acc90979092031001
+        version_id: '1768570662094083'
+  - relpath: raw/train_images_0.pt
+    md5: 45a5787aa4d44cc51bbc31f963513b05
+    size: 15680768
+    cloud:
+      storage:
+        etag: 088ffedd95979092031001
+        version_id: '1768570672873231'
+  - relpath: raw/train_images_1.pt
+    md5: a5c62febd0bb8c80df768b7c208a9d27
+    size: 15680768
+    cloud:
+      storage:
+        etag: 08e395e695979092031001
+        version_id: '1768570673007331'
+  - relpath: raw/train_images_2.pt
+    md5: f20c7ad31a03213f3fa2ae2f03e3085b
+    size: 15680768
+    cloud:
+      storage:
+        etag: 0884d8e195979092031001
+        version_id: '1768570672933892'
+  - relpath: raw/train_images_3.pt
+    md5: c57ae96d4e686648971e65d738f0332a
+    size: 15680768
+    cloud:
+      storage:
+        etag: 08c4fdd595979092031001
+        version_id: '1768570672742084'
+  - relpath: raw/train_images_4.pt
+    md5: 6d70cc8f6423c00671c2aa64fb139d67
+    size: 15680768
+    cloud:
+      storage:
+        etag: 089eb5e495979092031001
+        version_id: '1768570672978590'
+  - relpath: raw/train_images_5.pt
+    md5: 826e31e8e2fd6296dd1ad1d4cbbf0c55
+    size: 15680768
+    cloud:
+      storage:
+        etag: 0881e0de95979092031001
+        version_id: '1768570672885761'
+  - relpath: raw/train_target_0.pt
+    md5: e4a6683c59059f14cef44dfec30cdc21
+    size: 480768
+    cloud:
+      storage:
+        etag: 08f7caee90979092031001
+        version_id: '1768570662659447'
+  - relpath: raw/train_target_1.pt
+    md5: 89b2d0ceabecbb618b05e536eade36fe
+    size: 480768
+    cloud:
+      storage:
+        etag: 08f482ea90979092031001
+        version_id: '1768570662584692'
+  - relpath: raw/train_target_2.pt
+    md5: b6eba9a036e61275df9d46f11acd0541
+    size: 480768
+    cloud:
+      storage:
+        etag: 08d5e9e390979092031001
+        version_id: '1768570662483157'
+  - relpath: raw/train_target_3.pt
+    md5: a27f99f24f43d6c653e1244b21d80de0
+    size: 480768
+    cloud:
+      storage:
+        etag: 08a3aae690979092031001
+        version_id: '1768570662524195'
+  - relpath: raw/train_target_4.pt
+    md5: b1b55f6a9baa7356bf87430775e37aa6
+    size: 480768
+    cloud:
+      storage:
+        etag: 08a1b6e090979092031001
+        version_id: '1768570662427425'
+  - relpath: raw/train_target_5.pt
+    md5: b44e2cd89f6efcbe4eb88253da30f327
+    size: 480768
+    cloud:
+      storage:
+        etag: 08b1abee90979092031001
+        version_id: '1768570662655409'
