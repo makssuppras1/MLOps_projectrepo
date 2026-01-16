@@ -1,6 +1,6 @@
-# @package _global_
 # Experiment 2: Different hyperparameters
 # Example: larger batch size and different learning rate
+# @package _global_
 training:
   seed: 123
   batch_size: 64

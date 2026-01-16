@@ -179,3 +179,12 @@ cython_debug/
 # Docker guide notes (personal learning material)
 docker_guide.md
 gcloud_guide.md
+
+# Hydra outputs (experiment results)
+outputs/
+*.log
+
+# Trained models (can be large)
+trained_model.pt
+models/*.pth
+models/*.pt
