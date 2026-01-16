@@ -4,6 +4,7 @@ training:
 
   batch_size: 32
   epochs: 10
+  max_length: 512  # Maximum sequence length for tokenization
 
   optimizer:
     _target_: torch.optim.Adam
