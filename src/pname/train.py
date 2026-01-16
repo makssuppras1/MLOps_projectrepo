@@ -1,4 +1,6 @@
 import logging
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import torch
 import hydra
@@ -7,6 +9,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from pname.data import corrupt_mnist
 from pname.model import MyAwesomeModel
+from pname.profiler import profile_training
 
 log = logging.getLogger(__name__)
 
@@ -59,24 +62,45 @@ def train(cfg: DictConfig) -> None:
     log.info(f"Batch size: {cfg.training.batch_size}, Epochs: {cfg.training.epochs}")
 
     statistics = {"train_loss": [], "train_accuracy": []}
-    for epoch in range(cfg.training.epochs):
-        model.train()
-        for i, (img, target) in enumerate(train_dataloader):
-            # Ensure images are float32 and on correct device
-            img = img.float().to(DEVICE)
-            target = target.long().to(DEVICE)
-            optimizer.zero_grad()
-            y_pred = model(img)
-            loss = loss_fn(y_pred, target)
-            loss.backward()
-            optimizer.step()
-            statistics["train_loss"].append(loss.item())
 
-            accuracy = (y_pred.argmax(dim=1) == target).float().mean().item()
-            statistics["train_accuracy"].append(accuracy)
+    # Use profiling if enabled
+    profile_enabled = cfg.training.get("profile", False)
 
-            if i % cfg.training.log_interval == 0:
-                log.info(f"Epoch {epoch}, iter {i}, loss: {loss.item():.4f}, accuracy: {accuracy:.4f}")
+    if profile_enabled:
+        log.info("Profiling enabled")
+        profiler_ctx = profile_training()
+        pytorch_profiler = profiler_ctx.__enter__()
+    else:
+        profiler_ctx = None
+        pytorch_profiler = None
+
+    try:
+        for epoch in range(cfg.training.epochs):
+            model.train()
+            for i, (img, target) in enumerate(train_dataloader):
+                # Ensure images are float32 and on correct device
+                img = img.float().to(DEVICE)
+                target = target.long().to(DEVICE)
+                optimizer.zero_grad()
+                y_pred = model(img)
+                loss = loss_fn(y_pred, target)
+                loss.backward()
+                optimizer.step()
+
+                # Step PyTorch profiler if enabled
+                if pytorch_profiler:
+                    pytorch_profiler.step()
+
+                statistics["train_loss"].append(loss.item())
+
+                accuracy = (y_pred.argmax(dim=1) == target).float().mean().item()
+                statistics["train_accuracy"].append(accuracy)
+
+                if i % cfg.training.log_interval == 0:
+                    log.info(f"Epoch {epoch}, iter {i}, loss: {loss.item():.4f}, accuracy: {accuracy:.4f}")
+    finally:
+        if profiler_ctx:
+            profiler_ctx.__exit__(None, None, None)
 
     log.info("Training complete")
 

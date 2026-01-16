@@ -1,20 +1,23 @@
 # Training hyperparameters
 training:
   seed: 42  # Random seed for reproducibility
-  
+
   batch_size: 32
   epochs: 10
-  
+
   optimizer:
     _target_: torch.optim.Adam
     lr: 0.001
-  
+
   loss_fn:
     _target_: torch.nn.CrossEntropyLoss
-  
+
   log_interval: 100  # Log every N iterations
-  
+
   # Paths
   model_save_path: "trained_model.pt"  # Default name for reproducibility tester
   figure_save_path: "reports/figures/training_statistics.png"
   figure_size: [15, 5]
+
+  # Profiling
+  profile: false  # Set to true to enable profiling
