@@ -1,0 +1,49 @@
+name: "CML - Data Validation"
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "data.dvc"
+      - "data/**"
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "data.dvc"
+      - "data/**"
+
+jobs:
+  data-validation:
+    name: "Validate Data Changes"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev --locked
+
+      - name: Compute dataset statistics
+        id: stats
+        run: |
+          uv run python src/pname/data_stats.py --processed-dir data/processed > stats_output.txt 2>&1 || true
+          cat stats_output.txt
+
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Comment PR report
+        if: github.event_name == 'pull_request'
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## 📊 Data Validation Report" > report.md
+          echo "" >> report.md
+          cat stats_output.txt >> report.md
+          cml comment create report.md --pr ${{ github.event.pull_request.number }}

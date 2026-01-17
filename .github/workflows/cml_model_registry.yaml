@@ -1,0 +1,51 @@
+name: "CML - Model Registry Validation"
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "models/**"
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "models/**"
+
+jobs:
+  model-registry-validation:
+    name: "Validate Model Registry Changes"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check model files
+        id: check_models
+        run: |
+          if [ -d "models" ] && [ "$(ls -A models/*.pt models/*.pth 2>/dev/null | wc -l)" -gt 0 ]; then
+            echo "models_found=true" >> $GITHUB_OUTPUT
+            echo "✅ Found model files:"
+            ls -1 models/*.pt models/*.pth 2>/dev/null || true
+          else
+            echo "models_found=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No model files found"
+          fi
+
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Comment PR report
+        if: github.event_name == 'pull_request'
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## 🤖 Model Registry Validation" > report.md
+          echo "" >> report.md
+          if [ "${{ steps.check_models.outputs.models_found }}" == "true" ]; then
+            echo "✅ Model files detected in \`models/\` directory" >> report.md
+            echo "" >> report.md
+            echo "**Files:**" >> report.md
+            ls -1 models/*.pt models/*.pth 2>/dev/null | sed 's/^/- /' >> report.md
+          else
+            echo "ℹ️  No local model files found (may be in WandB registry)" >> report.md
+          fi
+          cml comment create report.md --pr ${{ github.event.pull_request.number }}
