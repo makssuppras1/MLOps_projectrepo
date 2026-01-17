@@ -7,34 +7,84 @@ on:
     branches: [ master, main ]
 
 jobs:
-  build:
+  lint:
+    name: "Lint code"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev --locked
+
+      - name: Run ruff linting
+        run: |
+          uv run ruff check .
+
+      - name: Run ruff formatting check
+        run: |
+          uv run ruff format --check .
+
+  test:
+    name: "Test on ${{ matrix.os }} with Python ${{ matrix.python-version }} and PyTorch ${{ matrix.torch-version }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.12", "3.13"]
+        torch-version: ["2.5.0", "2.6.0"]
+        # Note: Add "2.7.0" when it becomes available
 
-      
     steps:
-    - uses: actions/checkout@v5
-    - uses: astral-sh/setup-uv@v7
-      with:
-        python-version: 3.12
-        enable-cache: true
+      - name: Checkout
+        uses: actions/checkout@v5
 
-    - name: Checkout
-      uses: actions/checkout@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
-    - name: Setup uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        python-version: 3.12
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ matrix.torch-version }}-${{ hashFiles('uv.lock', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ matrix.torch-version }}-
+            ${{ runner.os }}-uv-${{ matrix.python-version }}-
+            ${{ runner.os }}-uv-
 
-    - name: Install dependencies
-      run: |
-        uv sync --dev --locked
+      - name: Install dependencies
+        run: |
+          uv sync --dev --locked
 
-    - name: Test with pytest
-      run: |
-        uv run pytest -v
+      - name: Install specific PyTorch version for testing
+        run: |
+          # Install the specific PyTorch version for testing (cross-platform)
+          uv run pip install "torch==${{ matrix.torch-version }}" --index-url https://download.pytorch.org/whl/cpu --upgrade
+
+      - name: Test with pytest
+        run: |
+          uv run pytest -v
+
+      - name: Run coverage
+        run: |
+          uv run coverage run -m pytest tests/
+          uv run coverage report -m
