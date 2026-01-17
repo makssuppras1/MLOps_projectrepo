@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from pname.data import arxiv_dataset
@@ -5,7 +6,10 @@ from pname.data import arxiv_dataset
 
 def test_data():
     """Test that arxiv_dataset loads correctly."""
-    train, test = arxiv_dataset()
+    try:
+        train, test = arxiv_dataset()
+    except FileNotFoundError:
+        pytest.skip("Data files not found (expected in CI if DVC data not pulled)")
 
     # Check that datasets are not empty
     assert len(train) > 0, "Training dataset should not be empty"
