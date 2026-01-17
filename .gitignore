@@ -180,9 +180,6 @@ cython_debug/
 docker_guide.md
 gcloud_guide.md
 config_guide.md
-CLOUD_TRAINING.md
-GCP_TRAINING.md
-QUICKSTART_GCP.md
 
 # Hydra outputs (experiment results)
 outputs/
