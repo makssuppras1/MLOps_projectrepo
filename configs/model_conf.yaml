@@ -1,6 +1,6 @@
 # Model architecture hyperparameters
 model:
-  num_labels: 5
+  num_labels: 138  # Updated to match actual number of categories in dataset
   model_name: distilbert-base-uncased
   dropout: 0.1
   freeze_encoder: false
