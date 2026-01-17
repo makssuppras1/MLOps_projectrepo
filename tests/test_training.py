@@ -10,14 +10,12 @@ def test_training(batch_size: int) -> None:
     """Test training with different batch sizes."""
     dummy_images = torch.randn(8, 1, 28, 28)
     dummy_targets = torch.randint(0, 10, (8,))
-    dataloader = torch.utils.data.DataLoader(
-        TensorDataset(dummy_images, dummy_targets), batch_size=batch_size
-    )
-    
+    dataloader = torch.utils.data.DataLoader(TensorDataset(dummy_images, dummy_targets), batch_size=batch_size)
+
     model = MyAwesomeModel()
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    
+
     model.train()
     for img, target in dataloader:
         optimizer.zero_grad()

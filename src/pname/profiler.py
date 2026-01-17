@@ -1,4 +1,5 @@
 """Simple profiling utilities."""
+
 import cProfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -11,9 +12,7 @@ from torch.profiler import ProfilerActivity, profile, schedule, tensorboard_trac
 
 @contextmanager
 def profile_training(
-    output_dir: str = "outputs/profiling",
-    with_memory: bool = False,
-    print_table: bool = True
+    output_dir: str = "outputs/profiling", with_memory: bool = False, print_table: bool = True
 ) -> Generator[profile, None, None]:
     """Simple context manager for profiling training.
 

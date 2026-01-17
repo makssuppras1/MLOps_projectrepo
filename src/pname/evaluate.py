@@ -12,9 +12,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 
 
 def collate_fn_eval(
-    batch: list[Tuple[str, torch.Tensor]],
-    tokenizer: DistilBertTokenizer,
-    max_length: int = 512
+    batch: list[Tuple[str, torch.Tensor]], tokenizer: DistilBertTokenizer, max_length: int = 512
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collate function to tokenize text batches for evaluation.
 

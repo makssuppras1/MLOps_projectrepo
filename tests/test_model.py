@@ -15,4 +15,4 @@ def test_error_on_wrong_shape():
     """Test that model raises error on wrong input shape."""
     model = MyAwesomeModel()
     with pytest.raises(RuntimeError):
-        model(torch.randn(1, 2, 3)) 
+        model(torch.randn(1, 2, 3))

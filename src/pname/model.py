@@ -13,12 +13,14 @@ class MyAwesomeModel(nn.Module):
         super().__init__()
         if model_cfg is None:
             # Default values for backward compatibility
-            model_cfg = DictConfig({
-                'num_labels': 5,
-                'model_name': 'distilbert-base-uncased',
-                'dropout': 0.1,
-                'freeze_encoder': False,
-            })
+            model_cfg = DictConfig(
+                {
+                    "num_labels": 5,
+                    "model_name": "distilbert-base-uncased",
+                    "dropout": 0.1,
+                    "freeze_encoder": False,
+                }
+            )
 
         self.num_labels = model_cfg.num_labels
         self.model_name = model_cfg.model_name
@@ -35,7 +37,7 @@ class MyAwesomeModel(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
 
         # Freeze encoder if specified
-        if model_cfg.get('freeze_encoder', False):
+        if model_cfg.get("freeze_encoder", False):
             self.freeze_encoder(freeze=True)
 
     def forward(

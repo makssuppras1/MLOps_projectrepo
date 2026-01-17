@@ -8,11 +8,13 @@ from pname.model import MyAwesomeModel
 
 def test_model_forward():
     """Test forward pass with and without labels."""
-    model_cfg = DictConfig({
-        'num_labels': 5,
-        'model_name': 'distilbert-base-uncased',
-        'dropout': 0.1,
-    })
+    model_cfg = DictConfig(
+        {
+            "num_labels": 5,
+            "model_name": "distilbert-base-uncased",
+            "dropout": 0.1,
+        }
+    )
     model = MyAwesomeModel(model_cfg=model_cfg)
     model.eval()
 

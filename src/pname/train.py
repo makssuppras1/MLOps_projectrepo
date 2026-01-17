@@ -2,10 +2,9 @@ import os
 from pathlib import Path
 from typing import Tuple
 
+import hydra
 import matplotlib.pyplot as plt
 import torch
-import hydra
-import wandb
 from dotenv import load_dotenv
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
@@ -13,9 +12,9 @@ from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from transformers import DistilBertTokenizer
 
+import wandb
 from pname.data import arxiv_dataset
 from pname.model import MyAwesomeModel
-from pname.profiler import profile_training
 
 # Load environment variables
 load_dotenv()
@@ -37,15 +36,15 @@ def set_seed(seed: int) -> None:
         # MPS doesn't have a direct seed function, but we can set the generator
         torch.mps.manual_seed(seed)
     import random
+
     import numpy as np
+
     random.seed(seed)
     np.random.seed(seed)
 
 
 def collate_fn(
-    batch: list[Tuple[str, torch.Tensor]],
-    tokenizer: DistilBertTokenizer,
-    max_length: int = 512
+    batch: list[Tuple[str, torch.Tensor]], tokenizer: DistilBertTokenizer, max_length: int = 512
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collate function to tokenize text batches.
 
@@ -173,23 +172,27 @@ def train(cfg: DictConfig) -> None:
 
             # Log to W&B
             if wandb_initialized:
-                wandb.log({
-                    "train/step_loss": loss.item(),
-                    "train/step_accuracy": accuracy,
-                    "epoch": epoch,
-                    "iteration": i,
-                })
+                wandb.log(
+                    {
+                        "train/step_loss": loss.item(),
+                        "train/step_accuracy": accuracy,
+                        "epoch": epoch,
+                        "iteration": i,
+                    }
+                )
 
         # Log epoch-level metrics
         avg_epoch_loss = epoch_loss / num_batches if num_batches > 0 else 0.0
         avg_epoch_accuracy = epoch_accuracy / num_batches if num_batches > 0 else 0.0
 
         if wandb_initialized:
-            wandb.log({
-                "train/epoch_loss": avg_epoch_loss,
-                "train/epoch_accuracy": avg_epoch_accuracy,
-                "epoch": epoch,
-            })
+            wandb.log(
+                {
+                    "train/epoch_loss": avg_epoch_loss,
+                    "train/epoch_accuracy": avg_epoch_accuracy,
+                    "epoch": epoch,
+                }
+            )
 
         logger.info(f"Epoch {epoch} complete - Avg loss: {avg_epoch_loss:.4f}, Avg accuracy: {avg_epoch_accuracy:.4f}")
 
@@ -234,7 +237,7 @@ def train(cfg: DictConfig) -> None:
                 "batch_size": cfg.training.batch_size,
                 "final_loss": statistics["train_loss"][-1] if statistics["train_loss"] else None,
                 "final_accuracy": statistics["train_accuracy"][-1] if statistics["train_accuracy"] else None,
-            }
+            },
         )
         artifact.add_file(str(model_save_path))
         wandb.log_artifact(artifact)
