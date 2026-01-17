@@ -123,7 +123,7 @@ will check the repositories and the code to verify your answers.
 >
 > Answer:
 
---- question 1 fill here ---
+MLOps 130
 
 ### Question 2
 > **Enter the study number for each member in the group**
@@ -134,7 +134,7 @@ will check the repositories and the code to verify your answers.
 >
 > Answer:
 
---- question 2 fill here ---
+s204634, s204614, s204598
 
 ### Question 3
 > **Did you end up using any open-source frameworks/packages not covered in the course during your project? If so**
@@ -148,7 +148,7 @@ will check the repositories and the code to verify your answers.
 >
 > Answer:
 
---- question 3 fill here ---
+We used the **Transformers** library from Hugging Face, specifically **DistilBert**, as our base model for text classification tasks on scientific papers. This library provided pre-trained transformer models and tokenizers that significantly accelerated our NLP pipeline development.
 
 ## Coding environment
 
@@ -168,7 +168,11 @@ will check the repositories and the code to verify your answers.
 >
 > Answer:
 
---- question 4 fill here ---
+We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to: 
+1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)), 
+2) Clone the repository, 
+3) Run `uv sync` to install all dependencies exactly as specified in the lock file, 
+4) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
 
 ### Question 5
 
