@@ -179,6 +179,10 @@ cython_debug/
 # Docker guide notes (personal learning material)
 docker_guide.md
 gcloud_guide.md
+config_guide.md
+CLOUD_TRAINING.md
+GCP_TRAINING.md
+QUICKSTART_GCP.md
 
 # Hydra outputs (experiment results)
 outputs/
@@ -189,7 +193,6 @@ trained_model.pt
 models/*.pth
 models/*.pt
 /data
-config_guide.md
 
 # Training outputs and generated files
 outputs/
