@@ -21,6 +21,35 @@ def train(ctx: Context) -> None:
 
 
 @task
+def evaluate(ctx: Context, model_checkpoint: str = "trained_model.pt") -> None:
+    """Evaluate model."""
+    ctx.run(
+        f"uv run src/{PROJECT_NAME}/evaluate.py {model_checkpoint}",
+        echo=True,
+        pty=not WINDOWS,
+    )
+
+
+@task
+def visualize(ctx: Context, model_checkpoint: str = "trained_model.pt") -> None:
+    """Visualize model embeddings."""
+    ctx.run(
+        f"uv run src/{PROJECT_NAME}/visualize.py {model_checkpoint}",
+        echo=True,
+        pty=not WINDOWS,
+    )
+
+
+@task
+def api(ctx: Context, host: str = "0.0.0.0", port: int = 8000, model_path: str = "") -> None:
+    """Run API server."""
+    cmd = f"uv run src/{PROJECT_NAME}/api.py --host {host} --port {port}"
+    if model_path:
+        cmd += f" --model-path {model_path}"
+    ctx.run(cmd, echo=True, pty=not WINDOWS)
+
+
+@task
 def test(ctx: Context) -> None:
     """Run tests."""
     ctx.run("uv run coverage run -m pytest tests/", echo=True, pty=not WINDOWS)
