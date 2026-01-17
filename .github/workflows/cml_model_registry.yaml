@@ -35,6 +35,7 @@ jobs:
 
       - name: Comment PR report
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -48,4 +49,4 @@ jobs:
           else
             echo "ℹ️  No local model files found (may be in WandB registry)" >> report.md
           fi
-          cml comment create report.md --pr ${{ github.event.pull_request.number }}
+          cml comment create report.md --pr ${{ github.event.pull_request.number }} || echo "CML comment failed (non-blocking)"
