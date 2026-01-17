@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pname"
-version = "0.0.1"
+version = "1.0.0"
 description = "Nej"
 authors = [
   { name = "Maksimal", email = "makskjeldsen@gmail.com" },
@@ -39,8 +39,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "black==24.10.0",
     "coverage==7.6.9",
     "invoke==2.2.0",
+    "isort==5.13.2",
     "mkdocs-material==9.4.6",
     "mkdocs==1.6.1",
     "pre-commit==4.1.0",
@@ -67,6 +69,14 @@ explicit = true
 
 [tool.ruff]
 line-length = 120
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
 
 [tool.coverage.run]
 omit = ["tests/*"]

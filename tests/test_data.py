@@ -1,15 +1,31 @@
-from pname.data import corrupt_mnist
+import pytest
 import torch
 
+from pname.data import arxiv_dataset
+
+
 def test_data():
-    train, test = corrupt_mnist()
-    assert len(train) == 30000
-    assert len(test) == 5000
+    """Test that arxiv_dataset loads correctly."""
+    try:
+        train, test = arxiv_dataset()
+    except FileNotFoundError:
+        pytest.skip("Data files not found (expected in CI if DVC data not pulled)")
+
+    # Check that datasets are not empty
+    assert len(train) > 0, "Training dataset should not be empty"
+    assert len(test) > 0, "Test dataset should not be empty"
+
+    # Check that each dataset returns (text, label) tuples
     for dataset in [train, test]:
-        for x, y in dataset:
-            assert x.shape == (1, 28, 28)
-            assert y in range(10)
-    train_targets = torch.unique(train.tensors[1])
-    assert (train_targets == torch.arange(0,10)).all()
-    test_targets = torch.unique(test.tensors[1])
-    assert (test_targets == torch.arange(0,10)).all()
+        text, label = dataset[0]
+        assert isinstance(text, str), "First element should be text (string)"
+        assert isinstance(label, torch.Tensor), "Second element should be label (tensor)"
+        assert label.dtype == torch.long, "Label should be long tensor"
+        assert len(text) > 0, "Text should not be empty"
+
+    # Check that labels are valid (non-negative integers)
+    train_labels = torch.stack([train[i][1] for i in range(min(100, len(train)))])
+    test_labels = torch.stack([test[i][1] for i in range(min(100, len(test)))])
+
+    assert (train_labels >= 0).all(), "All training labels should be non-negative"
+    assert (test_labels >= 0).all(), "All test labels should be non-negative"

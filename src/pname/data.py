@@ -5,7 +5,6 @@ from pathlib import Path
 
 import torch
 import typer
-from loguru import logger
 
 
 def preprocess_data(

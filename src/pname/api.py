@@ -1,4 +1,5 @@
 """FastAPI application for model inference."""
+
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +32,7 @@ class PredictionRequest(BaseModel):
     Attributes:
         text: Text to classify (title + abstract).
     """
+
     text: str
 
 
@@ -42,6 +44,7 @@ class PredictionResponse(BaseModel):
         probabilities: List of probabilities for each class.
         confidence: Confidence score (max probability).
     """
+
     predicted_class: int
     probabilities: list[float]
     confidence: float
@@ -140,10 +143,7 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
         HTTPException: If model is not loaded.
     """
     if model is None or tokenizer is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Please load a model first using /load endpoint."
-        )
+        raise HTTPException(status_code=503, detail="Model not loaded. Please load a model first using /load endpoint.")
 
     try:
         # Tokenize input
@@ -161,7 +161,6 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
         # Get prediction
         with torch.no_grad():
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs["logits"]
             probs = outputs["probs"]
             pred = outputs["preds"]
 

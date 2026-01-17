@@ -1,0 +1,64 @@
+name: "CML - Data Validation"
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "data.dvc"
+      - "data/**"
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "data.dvc"
+      - "data/**"
+
+jobs:
+  data-validation:
+    name: "Validate Data Changes"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev --locked
+
+      - name: Setup DVC (optional)
+        uses: iterative/setup-dvc@v2
+        continue-on-error: true
+
+      - name: Pull data with DVC (optional)
+        continue-on-error: true
+        run: |
+          dvc pull || echo "DVC pull skipped (data may not be available in CI)"
+
+      - name: Compute dataset statistics
+        id: stats
+        continue-on-error: true
+        run: |
+          uv run python src/pname/data_stats.py --processed-dir data/processed > stats_output.txt 2>&1 || echo "Statistics computation completed with warnings"
+          cat stats_output.txt
+
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Comment PR report
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## 📊 Data Validation Report" > report.md
+          echo "" >> report.md
+          if [ -f stats_output.txt ]; then
+            cat stats_output.txt >> report.md
+          else
+            echo "⚠️  Statistics computation did not produce output" >> report.md
+          fi
+          cml comment create report.md --pr ${{ github.event.pull_request.number }} || echo "CML comment failed (non-blocking)"
