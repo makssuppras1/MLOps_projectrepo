@@ -18,6 +18,15 @@ def preprocess_data(
 
     Loads ArXiv dataset from raw_dir, processes text (title + abstract),
     encodes categories as labels, splits into train/test, and saves to processed_dir.
+
+    Args:
+        raw_dir: Path to directory containing raw CSV files.
+        processed_dir: Path to directory where processed data will be saved.
+        test_split: Fraction of data to use for testing (default: 0.2).
+        seed: Random seed for reproducible train/test split (default: 42).
+
+    Raises:
+        FileNotFoundError: If no CSV file is found in raw_dir.
     """
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
@@ -91,21 +100,54 @@ def preprocess_data(
 
 
 class ArXivDataset(torch.utils.data.Dataset):
-    """Dataset for ArXiv papers."""
+    """Dataset for ArXiv papers.
+
+    Attributes:
+        texts: List of paper texts (title + abstract).
+        labels: Tensor of integer class labels.
+    """
 
     def __init__(self, texts: list[str], labels: torch.Tensor) -> None:
+        """Initialize ArXiv dataset.
+
+        Args:
+            texts: List of paper texts (title + abstract).
+            labels: Tensor of integer class labels.
+        """
         self.texts = texts
         self.labels = labels
 
     def __len__(self) -> int:
+        """Return the number of samples in the dataset.
+
+        Returns:
+            Number of samples.
+        """
         return len(self.texts)
 
     def __getitem__(self, idx: int) -> tuple[str, torch.Tensor]:
+        """Get a sample from the dataset.
+
+        Args:
+            idx: Index of the sample to retrieve.
+
+        Returns:
+            Tuple of (text, label).
+        """
         return self.texts[idx], self.labels[idx]
 
 
 def arxiv_dataset() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """Return train and test datasets for ArXiv papers."""
+    """Return train and test datasets for ArXiv papers.
+
+    Loads processed data from data/processed directory and returns PyTorch datasets.
+
+    Returns:
+        Tuple of (train_dataset, test_dataset).
+
+    Raises:
+        FileNotFoundError: If processed data files are not found.
+    """
     processed_dir = Path("data/processed")
 
     with open(processed_dir / "train_texts.json", "r", encoding="utf-8") as f:

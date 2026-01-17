@@ -25,4 +25,4 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-cache --no-i
 EXPOSE 8000
 
 # Entrypoint for API server
-ENTRYPOINT ["uv", "run", "uvicorn", "src.pname.api:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uv", "run", "src/pname/api.py", "--host", "0.0.0.0", "--port", "8000"]
