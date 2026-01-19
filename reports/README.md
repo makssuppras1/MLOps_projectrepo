@@ -384,13 +384,13 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
-*Google Cloud Storage (GCS)*: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
 
-*Compute Engine*: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
+***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
 
-*Artifact Registry*: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
+***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
 
-*Cloud Build*: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
+***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
 
 ### Question 18
 
@@ -405,7 +405,9 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 18 fill here ---
+For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. Following the course guidelines, we deployed an ``e2-medium`` instance (2 vCPUs, 4 GB RAM) in the ``europe-west1-d`` zone. This VM runs Debian 12 and is specifically configured with a Compute Engine Service Account to handle security and permissions.
+
+To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
 
 ### Question 19
 
