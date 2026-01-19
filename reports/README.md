@@ -405,7 +405,7 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
-For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. Following the course guidelines, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
+For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
 
 To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
 
