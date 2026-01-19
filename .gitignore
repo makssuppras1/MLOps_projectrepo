@@ -199,3 +199,6 @@ reports/figures/training_statistics.png
 # Processed data (generated from raw data)
 data/processed/*.json
 data/processed/*.pt
+
+# Weights & Biases experiment tracking
+wandb/

@@ -29,12 +29,13 @@ dependencies = [
     "pathspec<0.12.0",
     "scikit-learn>=1.8.0",
     "snakeviz>=2.2.2",
-    "torch==2.6.0",
+    "torch>=2.6.0",
     "torch-tb-profiler>=0.4.3",
-    "transformers>=4.40.0",
+    "transformers>=4.50.0",
     "typer==0.15.1",
     "uvicorn==0.34.0",
-    "wandb>=0.16.0",
+    "wandb>=0.17.0",
+    "dvc-gs>=3.0.2",
 ]
 
 [dependency-groups]
