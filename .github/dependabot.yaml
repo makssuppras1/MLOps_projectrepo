@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: "uv"
-    directory: "/pyproject.toml"
+  - package-ecosystem: "pip"
+    directory: "/"
     schedule:
       interval: "weekly"
