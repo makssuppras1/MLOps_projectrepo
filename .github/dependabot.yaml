@@ -4,3 +4,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    post-update-hook:
+      command: "shell"
+      args: ["run", "uv", "lock"]
