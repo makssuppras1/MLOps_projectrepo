@@ -1,10 +1,10 @@
-name: "Run tests"
+name: Unit tests & build
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [main]
   pull_request:
-    branches: [ master, main ]
+    branches: [main]
 
 jobs:
   lint:
@@ -88,3 +88,23 @@ jobs:
         run: |
           uv run coverage run -m pytest tests/
           uv run coverage report -m
+
+  build:
+    name: "Build Docker images"
+    needs: test
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Auth with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Submit build
+        run: gcloud builds submit . --config cloudbuild.yaml --substitutions=_IMAGE_NAME=train:latest
