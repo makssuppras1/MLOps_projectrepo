@@ -179,6 +179,7 @@ cython_debug/
 # Docker guide notes (personal learning material)
 docker_guide.md
 gcloud_guide.md
+config_guide.md
 
 # Hydra outputs (experiment results)
 outputs/
@@ -189,7 +190,6 @@ trained_model.pt
 models/*.pth
 models/*.pt
 /data
-config_guide.md
 
 # Training outputs and generated files
 outputs/
@@ -199,3 +199,6 @@ reports/figures/training_statistics.png
 # Processed data (generated from raw data)
 data/processed/*.json
 data/processed/*.pt
+
+# Weights & Biases experiment tracking
+wandb/

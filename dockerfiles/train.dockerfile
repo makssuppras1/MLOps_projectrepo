@@ -11,15 +11,15 @@ COPY uv.lock uv.lock
 COPY pyproject.toml pyproject.toml
 COPY README.md README.md
 COPY src/ src/
-COPY data/ data/
 COPY configs/ configs/
+# Note: data/ is not copied - it should be mounted or pulled on the instance
 
 # Set working directory
 WORKDIR /
 
-# Install dependencies with cache mount for faster rebuilds
+# Install dependencies
 ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-cache --no-install-project
+RUN uv sync --locked --no-cache --no-install-project
 
 # Entrypoint for training script
 ENTRYPOINT ["uv", "run", "src/pname/train.py"]

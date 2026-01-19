@@ -1,0 +1,27 @@
+[
+  {
+    "name": "keep-recent-train-images",
+    "action": { "type": "Keep" },
+    "mostRecentVersions": {
+      "packageNamePrefixes": ["train"],
+      "keepCount": 10
+    }
+  },
+  {
+    "name": "delete-old-untagged",
+    "action": { "type": "Delete" },
+    "condition": {
+      "tagState": "UNTAGGED",
+      "olderThan": "30d"
+    }
+  },
+  {
+    "name": "delete-old-tagged",
+    "action": { "type": "Delete" },
+    "condition": {
+      "tagState": "TAGGED",
+      "tagPrefixes": ["latest"],
+      "olderThan": "90d"
+    }
+  }
+]

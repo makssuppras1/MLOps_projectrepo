@@ -51,8 +51,8 @@ def preprocess_data(
             abstract = row.get("abstract", "").strip()
             text = f"{title} {abstract}".strip()
 
-            # Get category (use first category if multiple)
-            category = row.get("categories", "").strip()
+            # Get category (support both "category" and "categories" column names)
+            category = row.get("categories", row.get("category", "")).strip()
             if not category:
                 continue  # Skip rows without category
 
