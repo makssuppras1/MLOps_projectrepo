@@ -202,3 +202,7 @@ data/processed/*.pt
 
 # Weights & Biases experiment tracking
 wandb/
+
+# Vertex AI config files with secrets
+vertex_ai_example_with_env.yaml
+*_with_env.yaml
