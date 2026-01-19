@@ -79,4 +79,5 @@ profile = "black"
 line_length = 120
 
 [tool.coverage.run]
-omit = ["tests/*"]
+source = ["src"]
+omit = ["tests/*", "*/__pycache__/*", "*/site-packages/*"]
