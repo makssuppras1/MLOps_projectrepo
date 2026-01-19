@@ -2,9 +2,9 @@ name: "Run tests"
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
 
 jobs:
   lint:
@@ -48,8 +48,8 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-latest"]
         python-version: ["3.12", "3.13"]
-        torch-version: ["2.6.0"]
-        # Note: PyTorch 2.5.0 is no longer available, using 2.6.0
+        torch-version: ["2.9.0"]
+        # Note: PyTorch versions are updated regularly, using latest available
 
     steps:
       - name: Checkout
