@@ -384,7 +384,7 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
-*Google Cloud Storage (GCS)*: Object storage service used to store raw data as well as tranining data (``gs://mlops_project_data_bucket1``), serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+*Google Cloud Storage (GCS)*: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
 
 *Compute Engine*: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
 
