@@ -46,13 +46,13 @@ def preprocess_data(
     with open(csv_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Combine title and summary (abstract)
+            # Combine title and abstract
             title = row.get("title", "").strip()
-            summary = row.get("summary", "").strip()
-            text = f"{title} {summary}".strip()
+            abstract = row.get("abstract", "").strip()
+            text = f"{title} {abstract}".strip()
 
-            # Get category
-            category = row.get("category", "").strip()
+            # Get category (support both "category" and "categories" column names)
+            category = row.get("categories", row.get("category", "")).strip()
             if not category:
                 continue  # Skip rows without category
 
