@@ -424,7 +424,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
---- question 19 fill here ---
+![bucket_20012026.png](figures/bucket_20012026.png)
 
 ### Question 20
 
@@ -433,7 +433,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
---- question 20 fill here ---
+![registry_20012026.png](figures/registry_20012026.png)
 
 ### Question 21
 
@@ -442,7 +442,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
---- question 21 fill here ---
+![build_20012026.png](figures/build_20012026.png)
 
 ### Question 22
 
