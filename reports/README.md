@@ -245,6 +245,7 @@ TOTAL                     285    150    47%
 
 
 
+
 ### Question 8
 
 > **What is the total code coverage (in percentage) of your code? If your code had a code coverage of 100% (or close**
