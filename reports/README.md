@@ -384,13 +384,19 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
-***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+We used the following six GCP services in our project:
 
-***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
+**Vertex AI**: Used for custom training jobs with configs `vertex_ai_config_cpu.yaml` and `vertex_ai_config_gpu.yaml`. We used machine types n1-standard-4 (GPU) and n1-highmem-4 (CPU) in the europe-west1 region for scalable model training an minizing the geographical distance of the region used to secure a lower cost.
 
-***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
+**Cloud Build**: Automated building and pushing of Docker images using `cloudbuild.yaml` configuration. Also used in `vertex_ai_train.yaml` to submit Vertex AI jobs, providing seamless CI/CD integration.
 
-***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
+**Artifact Registry**: Container registry service that stores our Docker images at `europe-west1-docker.pkg.dev/dtumlops-484310/container-registry` with the `train:latest` image for our training pipeline.
+
+**Cloud Storage (GCS)**: Object storage service with bucket `mlops_project_data_bucket1` used for storing training data. Integrated with DVC for data versioning (configured in `.dvc/config`) and mounted at `/gcs/mlops_project_data_bucket1/` in Vertex AI jobs.
+
+**Secret Manager**: Securely stores sensitive credentials like `WANDB_API_KEY`, which is referenced in `vertex_ai_train.yaml` for secure access during training jobs.
+
+**Cloud Logging**: Enabled in `cloudbuild.yaml` with `CLOUD_LOGGING_ONLY` setting to capture and store Cloud Build operation logs for monitoring and debugging.
 
 ### Question 18
 
@@ -405,9 +411,11 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
-For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
+We used **Vertex AI** rather than directly using Compute Engine for our model training workloads. Vertex AI provides managed machine learning infrastructure that abstracts away the underlying compute resources while still leveraging Google's compute infrastructure. 
 
-To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
+We configured two different machine types: **n1-standard-4** (4 vCPUs, 15 GB memory) for GPU-enabled training and **n1-highmem-4** (4 vCPUs, 26 GB memory) for CPU-only training. All instances were deployed in the **europe-west1** region to minimize latency and costs.
+
+Our training jobs were initiated through custom training configurations (`vertex_ai_config_cpu.yaml` and `vertex_ai_config_gpu.yaml`) which specified the machine types, Docker container images from our Artifact Registry, and mounted our Cloud Storage bucket (`mlops_project_data_bucket1`) at `/gcs/mlops_project_data_bucket1/` for data access. This setup provided us with scalable, managed compute resources without the overhead of manually managing VM instances.
 
 ### Question 19
 
