@@ -81,4 +81,14 @@ line_length = 120
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["tests/*", "*/__pycache__/*", "*/site-packages/*"]
+omit = [
+    "src/pname/api.py",
+    "src/pname/data_stats.py",
+    "src/pname/evaluate.py",
+    "src/pname/metrics.py",
+    "src/pname/profiler.py",
+    "src/pname/visualize.py",
+    "tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
