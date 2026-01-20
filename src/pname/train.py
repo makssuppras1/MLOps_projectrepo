@@ -147,14 +147,16 @@ def train(cfg: DictConfig) -> None:
     def collate(batch):
         return collate_fn(batch, tokenizer, max_length)
 
+    # Simplified data loading: remove non-essential optimizations for faster startup
+    num_workers = cfg.training.get("num_workers", 0)
     train_dataloader = torch.utils.data.DataLoader(
         train_set,
         batch_size=cfg.training.batch_size,
         collate_fn=collate,
         shuffle=True,
-        num_workers=cfg.training.get("num_workers", 4),  # Parallel data loading
-        pin_memory=True if DEVICE.type == "cuda" else False,  # Faster GPU transfer
-        persistent_workers=True if cfg.training.get("num_workers", 0) > 0 else False,
+        num_workers=num_workers,
+        # Simplified: removed pin_memory and persistent_workers for simplicity
+        # These optimizations are non-essential for small datasets and add overhead
     )
 
     # Instantiate optimizer from config (loss is computed in model forward)
@@ -172,6 +174,9 @@ def train(cfg: DictConfig) -> None:
 
     statistics = {"train_loss": [], "train_accuracy": []}
     training_stopped_early = False
+    max_steps = cfg.training.get("max_steps", None)
+    global_step = 0
+
     for epoch in range(cfg.training.epochs):
         # Check runtime limit before starting epoch
         if max_runtime_hours:
@@ -181,12 +186,25 @@ def train(cfg: DictConfig) -> None:
                 logger.info(f"Completed {epoch} out of {cfg.training.epochs} epochs")
                 training_stopped_early = True
                 break
+
+        # Check max_steps before starting epoch
+        if max_steps is not None and global_step >= max_steps:
+            logger.info(f"Max steps ({max_steps}) reached. Stopping training.")
+            training_stopped_early = True
+            break
+
         model.train()
         epoch_loss = 0.0
         epoch_accuracy = 0.0
         num_batches = 0
 
         for i, (input_ids, attention_mask, labels) in enumerate(train_dataloader):
+            # Check max_steps limit before processing batch
+            if max_steps is not None and global_step >= max_steps:
+                logger.info(f"Max steps ({max_steps}) reached. Stopping training.")
+                training_stopped_early = True
+                break
+
             # Check runtime limit periodically during training
             if max_runtime_hours and (i % 100 == 0):  # Check every 100 iterations
                 elapsed = time.time() - start_time
@@ -220,23 +238,27 @@ def train(cfg: DictConfig) -> None:
             epoch_loss += loss.item()
             epoch_accuracy += accuracy
             num_batches += 1
+            global_step += 1
 
             if i % cfg.training.log_interval == 0:
-                logger.info(f"Epoch {epoch}, iter {i}, loss: {loss.item():.4f}, accuracy: {accuracy:.4f}")
+                logger.info(
+                    f"Epoch {epoch}, iter {i}, step {global_step}, loss: {loss.item():.4f}, accuracy: {accuracy:.4f}"
+                )
 
-            # Log to W&B
-            if wandb_initialized:
+            # Log to W&B (less frequently to reduce overhead)
+            if wandb_initialized and (global_step % cfg.training.log_interval == 0):
                 wandb.log(
                     {
                         "train/step_loss": loss.item(),
                         "train/step_accuracy": accuracy,
                         "epoch": epoch,
                         "iteration": i,
+                        "global_step": global_step,
                     }
                 )
 
         # Break out of outer loop if training was stopped early
-        if training_stopped_early:
+        if training_stopped_early or (max_steps is not None and global_step >= max_steps):
             break
 
         # Log epoch-level metrics

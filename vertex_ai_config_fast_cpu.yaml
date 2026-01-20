@@ -1,8 +1,8 @@
 # Fast training experiment on CPU (fallback when GPU quota is exceeded)
-# Budget limit: $5 maximum = ~25 hours at $0.20/hour
-# Timeout set to 24 hours to stay safely under budget
+# Ultra-fast training: 50 steps, 200 samples, ~2-5 minutes expected
+# Timeout set to 30 minutes for safety
 scheduling:
-  timeout: "86400s"  # 24 hours (86400 seconds) - prevents exceeding $5 budget
+  timeout: "1800s"  # 30 minutes (1800 seconds) - more than enough for ultra-fast training
 
 workerPoolSpecs:
   - machineSpec:

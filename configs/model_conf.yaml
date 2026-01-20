@@ -1,6 +1,7 @@
 # Model architecture hyperparameters
+# AGGRESSIVELY simplified for ultra-fast training: frozen encoder, no dropout
 model:
   num_labels: 138  # Updated to match actual number of categories in dataset
   model_name: distilbert-base-uncased
-  dropout: 0.1
-  freeze_encoder: true
+  dropout: 0.0  # No dropout for fastest training
+  freeze_encoder: true  # Freeze encoder - only train classifier head (~138 * 768 = ~106k params)

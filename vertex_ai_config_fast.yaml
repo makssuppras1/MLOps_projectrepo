@@ -1,7 +1,7 @@
-# Budget limit: $5 maximum = ~9 hours at $0.55/hour
-# Timeout set to 8 hours to stay safely under budget
+# Ultra-fast training: 50 steps, 200 samples, ~1 minute expected on GPU
+# Timeout set to 15 minutes for safety
 scheduling:
-  timeout: "28800s"  # 8 hours (28800 seconds) - prevents exceeding $5 budget
+  timeout: "900s"  # 15 minutes (900 seconds) - more than enough for ultra-fast training
 
 workerPoolSpecs:
   - machineSpec:

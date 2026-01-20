@@ -1,25 +1,28 @@
 # Training hyperparameters
+# AGGRESSIVELY simplified defaults for ultra-fast, minimal-cost training
 training:
   seed: 42  # Random seed for reproducibility
 
-  batch_size: 64  # Increased from 32 for better GPU utilization
-  epochs: 10
-  max_length: 512  # Maximum sequence length for tokenization
-  num_workers: 4  # Parallel data loading workers
+  batch_size: 128  # Larger batch for fewer iterations
+  epochs: 1  # Single epoch
+  max_length: 32  # Very short sequences for fastest processing
+  num_workers: 0  # No parallel workers to reduce overhead
+  max_samples: 200  # Minimal samples for ultra-fast training
+  max_steps: 50  # Hard cap: stop after 50 steps
 
   optimizer:
     _target_: torch.optim.Adam
-    lr: 0.001
+    lr: 0.001  # Simple, stable learning rate
 
   loss_fn:
     _target_: torch.nn.CrossEntropyLoss
 
-  log_interval: 100  # Log every N iterations
+  log_interval: 10  # Less frequent logging for speed
 
   # Paths
   model_save_path: "trained_model.pt"  # Default name for reproducibility tester
   figure_save_path: "reports/figures/training_statistics.png"
-  figure_size: [15, 5]
+  figure_size: [12, 4]  # Smaller figure size
 
   # Profiling
   profile: false  # Set to true to enable profiling

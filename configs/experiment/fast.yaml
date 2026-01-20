@@ -1,12 +1,14 @@
-# Fast training experiment - optimized for ~1 hour completion
-# Use with GPU: experiment=fast
-# Budget: ~$0.30-0.55 per run (well under $5 limit)
+# Fast training experiment - minimal configuration for pipeline validation
+# Use with: experiment=fast
+# AGGRESSIVELY simplified for maximum speed and minimal resource usage
 # @package _global_
 training:
   seed: 42
-  batch_size: 128  # Larger batch size for GPU efficiency
-  epochs: 3  # Reduced epochs for faster completion
-  max_length: 256  # Reduced sequence length (faster tokenization and processing)
-  num_workers: 4  # Keep parallel data loading
-  max_samples: 20000  # Use subset of data (20k samples instead of ~109k) - ~2.5x faster
-  max_runtime_hours: 8  # Safety limit: stop after 8 hours (~$4.40 max cost)
+  batch_size: 128  # Increased for faster training (fewer iterations)
+  epochs: 1  # Single epoch
+  max_length: 32  # Very short sequences for fast tokenization and processing
+  num_workers: 0  # No parallel workers to reduce overhead
+  max_samples: 200  # Minimal samples for ultra-fast training (~100x faster than full dataset)
+  max_steps: 50  # Hard cap: stop after 50 steps regardless of epoch
+  max_runtime_hours: 0.5  # Strict 30-minute limit
+  log_interval: 10  # Less frequent logging
