@@ -426,7 +426,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![bucket_20012026](figures/bucket_20012026.png>)
+![bucket_20012026](figures/bucket_20012026.png)
 
 ### Question 20
 
@@ -435,7 +435,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![registry_20012026](figures/registry_20012026.png>)
+![registry_20012026](figures/registry_20012026.png)
 
 ### Question 21
 
@@ -444,7 +444,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![build_20012026](figures/build_20012026.png>)
+![build_20012026](figures/build_20012026.png)
 
 ### Question 22
 
