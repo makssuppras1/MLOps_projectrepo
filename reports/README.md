@@ -172,7 +172,8 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)), 
 2) Clone the repository, 
 3) Run `uv sync` to install all dependencies exactly as specified in the lock file, 
-4) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
+4) Download the data to your local repository buy running the following command in the terminal: ``uv run sh curl_arxiv-scientific-research-papers-dataset``
+5) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
 
 ### Question 5
 
