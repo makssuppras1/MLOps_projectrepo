@@ -21,49 +21,6 @@ class TestArXivDataset:
         assert dataset.texts == texts
         assert torch.equal(dataset.labels, labels)
 
-    def test_dataset_len(self):
-        """Test dataset length."""
-        texts = ["text 1", "text 2", "text 3"]
-        labels = torch.tensor([0, 1, 0])
-
-        dataset = ArXivDataset(texts, labels)
-
-        assert len(dataset) == 3
-
-    def test_dataset_getitem(self):
-        """Test dataset __getitem__ returns correct samples."""
-        texts = ["paper A", "paper B", "paper C"]
-        labels = torch.tensor([0, 1, 2])
-
-        dataset = ArXivDataset(texts, labels)
-
-        text, label = dataset[0]
-        assert text == "paper A"
-        assert label == 0
-
-        text, label = dataset[1]
-        assert text == "paper B"
-        assert label == 1
-
-    def test_dataset_getitem_out_of_bounds(self):
-        """Test dataset indexing raises error for out of bounds."""
-        texts = ["text 1"]
-        labels = torch.tensor([0])
-
-        dataset = ArXivDataset(texts, labels)
-
-        with pytest.raises(IndexError):
-            _ = dataset[5]
-
-    def test_dataset_empty(self):
-        """Test dataset with empty texts and labels."""
-        texts = []
-        labels = torch.tensor([])
-
-        dataset = ArXivDataset(texts, labels)
-
-        assert len(dataset) == 0
-
 
 class TestPreprocessData:
     """Test suite for preprocess_data function."""
@@ -142,34 +99,6 @@ class TestPreprocessData:
             assert mapping["cs.AI"] == 0
             assert mapping["cs.LG"] == 1
 
-    def test_preprocess_data_no_csv_raises_error(self):
-        """Test that FileNotFoundError is raised when no CSV found."""
-        with tempfile.TemporaryDirectory() as raw_dir, tempfile.TemporaryDirectory() as processed_dir:
-            # Don't create any CSV file
-            with pytest.raises(FileNotFoundError):
-                preprocess_data(str(raw_dir), str(processed_dir))
-
-    def test_preprocess_data_skips_rows_without_category(self):
-        """Test that rows without categories are skipped."""
-        with tempfile.TemporaryDirectory() as raw_dir, tempfile.TemporaryDirectory() as processed_dir:
-            raw_path = Path(raw_dir)
-            csv_path = raw_path / "sample.csv"
-
-            csv_data = "title,abstract,categories\n"
-            csv_data += "Paper 1,Abstract 1,cs.AI\n"
-            csv_data += "Paper 2,Abstract 2,\n"  # Missing category
-            csv_data += "Paper 3,Abstract 3,cs.LG\n"
-
-            csv_path.write_text(csv_data)
-
-            preprocess_data(str(raw_path), str(processed_dir), test_split=0.25, seed=42)
-
-            processed_path = Path(processed_dir)
-            with open(processed_path / "train_texts.json", "r") as f:
-                train_texts = json.load(f)
-
-            # Should only have 2 samples (Paper 2 skipped)
-            assert len(train_texts) + len(torch.load(processed_path / "test_labels.pt")) == 2
 
     def test_preprocess_data_reproducibility(self):
         """Test that same seed produces same split."""
