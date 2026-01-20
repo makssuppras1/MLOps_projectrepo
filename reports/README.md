@@ -242,7 +242,9 @@ I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_traini
 >
 > Answer:
 
-***Based on test v.1:*** The total code coverage of our code is **25%**, which includes all our source code across 575 statements. We are far from 100% coverage of our code, and even if we were at 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric that tells us which lines of code were executed during testing, but it doesn't guarantee the quality or correctness of those tests. High coverage can give false confidence if tests only check that code runs without asserting meaningful outcomes. Additionally, coverage doesn't account for edge cases, integration issues, or logical errors in the tests themselves. Our current 25% coverage primarily covers our core data processing, ``data.py``, (65%) and model functionality, ``model.py``, (76%), but leaves API, evaluation, and visualization modules untested, indicating areas where we could expand our test suite.
+The total code coverage of our code is **48%**, covering 136 out of 285 total statements across our main modules. We are far from 100% coverage, and even if we achieved 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric showing which lines were executed during testing, but doesn't guarantee test quality or correctness. High coverage can provide false confidence if tests only verify code execution.
+
+Our current coverage breakdown shows: `data.py` at 61%, `model.py` at 71%, and `train.py` at 27%. This indicates good coverage of our core data processing and model functionality, but limited coverage of the training pipeline. Coverage doesn't account for edge cases, integration issues, or logical errors in test assertions themselves. Modules like API, evaluation, and visualization remain completely untested, representing areas for test suite expansion.
 
 ### Question 9
 
