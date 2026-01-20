@@ -221,8 +221,30 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 > *application but also ... .*
 >
 > Answer:
+I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_training) with a total code coverage of 47% and split among files as shown in the table below.
 
---- question 7 fill here ---
+
+Name                    Stmts   Miss  Cover   Missing
+-----------------------------------------------------
+src/pname/__init__.py       0      0   100%
+src/pname/data.py         102     40    61%   13-14, 46, 64, 132, 143, 166-224, 228
+src/pname/model.py         55     16    71%   41, 87-89, 122-136
+src/pname/train.py        128     94    27%   33-34, 37, 81-248, 258, 262
+-----------------------------------------------------
+TOTAL                     285    150    47%
+-----------------------------------------------------
+
+*test_data.py* focuses on the data processing/preprocessing pipeline; validating that the ArXivDataset classes are initialized correctly, that the expected output files are created, that the train/val/tests split ratios are correct, and checks that the category-to-label mapping are created correctly for classification
+
+*test_model.py* focuses on model architecture and behavior; Initialization, forward passes, output validation, encoder freezing, parameter counting, and gradient flow.
+<!-- tests default and custom model configurations, validates inference mode (without labels) and training mode (with labels and computing the loss), checks tensor shapes and dictionary keys in model outputs -->
+
+*test_training.py* focuses on training pipeline and reproducibility; Seed reproducibility, batch collation, and training dunamics.
+
+
+
+
+
 
 ### Question 8
 
