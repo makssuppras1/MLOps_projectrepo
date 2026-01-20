@@ -82,6 +82,7 @@ line_length = 120
 [tool.coverage.run]
 source = ["src"]
 omit = [
+    "src/pname/__init__.py"
     "src/pname/api.py",
     "src/pname/data_stats.py",
     "src/pname/evaluate.py",
