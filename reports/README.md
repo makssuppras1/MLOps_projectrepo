@@ -188,7 +188,9 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 >
 > Answer:
 
---- question 5 fill here ---
+From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis. 
+
+We deviated from the template by adding several project-specific files: `tasks.py` for invoke commands, guide files (`LOGGING_GUIDE.md`, `profiling_guide.md`, `config_guide.md`), a data download script (`curl_arxiv-scientific-research-papers-dataset`), and various output directories. The core template structure was maintained while adding these practical extensions for our specific MLOps workflow.
 
 ### Question 6
 
@@ -221,30 +223,13 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 > *application but also ... .*
 >
 > Answer:
-I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_training) with a total code coverage of 47% and split among files as shown in the table below.
+I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_training) with the focus on testing the code for our data, model and train scripts.
 
-
-Name                    Stmts   Miss  Cover   Missing
------------------------------------------------------
-src/pname/__init__.py       0      0   100%
-src/pname/data.py         102     40    61%   13-14, 46, 64, 132, 143, 166-224, 228
-src/pname/model.py         55     16    71%   41, 87-89, 122-136
-src/pname/train.py        128     94    27%   33-34, 37, 81-248, 258, 262
------------------------------------------------------
-TOTAL                     285    150    47%
------------------------------------------------------
-
-*test_data.py* focuses on the data processing/preprocessing pipeline; validating that the ArXivDataset classes are initialized correctly, that the expected output files are created, that the train/val/tests split ratios are correct, and checks that the category-to-label mapping are created correctly for classification
+*test_data.py* focuses on the data processing/preprocessing pipeline; Validating that the ArXivDataset classes are initialized correctly, that the expected output files are created, that the train/val/tests split ratios are correct, and checks that the category-to-label mapping are created correctly for classification.
 
 *test_model.py* focuses on model architecture and behavior; Initialization, forward passes, output validation, encoder freezing, parameter counting, and gradient flow.
-<!-- tests default and custom model configurations, validates inference mode (without labels) and training mode (with labels and computing the loss), checks tensor shapes and dictionary keys in model outputs -->
 
-*test_training.py* focuses on training pipeline and reproducibility; Seed reproducibility, batch collation, and training dunamics.
-
-
-
-
-
+*test_training.py* focuses on training pipeline and reproducibility; Seed reproducibility, batch collation, and training dynamics.
 
 ### Question 8
 
@@ -259,7 +244,9 @@ TOTAL                     285    150    47%
 >
 > Answer:
 
-***Based on test v.1:*** The total code coverage of our code is **25%**, which includes all our source code across 575 statements. We are far from 100% coverage of our code, and even if we were at 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric that tells us which lines of code were executed during testing, but it doesn't guarantee the quality or correctness of those tests. High coverage can give false confidence if tests only check that code runs without asserting meaningful outcomes. Additionally, coverage doesn't account for edge cases, integration issues, or logical errors in the tests themselves. Our current 25% coverage primarily covers our core data processing, ``data.py``, (65%) and model functionality, ``model.py``, (76%), but leaves API, evaluation, and visualization modules untested, indicating areas where we could expand our test suite.
+The total code coverage of our code is **48%**, covering 136 out of 285 total statements across our main modules. We are far from 100% coverage, and even if we achieved 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric showing which lines were executed during testing, but doesn't guarantee test quality or correctness. High coverage can provide false confidence if tests only verify code execution.
+
+Our current coverage breakdown shows: `data.py` at 61%, `model.py` at 71%, and `train.py` at 27%. This indicates good coverage of our core data processing and model functionality, but limited coverage of the training pipeline. Coverage doesn't account for edge cases, integration issues, or logical errors in test assertions themselves. Modules like API, evaluation, and visualization remain completely untested, representing areas for test suite expansion.
 
 ### Question 9
 
