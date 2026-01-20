@@ -426,7 +426,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
---- question 19 fill here ---
+![bucket_20012026](figures/bucket_20012026.png>)
 
 ### Question 20
 
@@ -435,7 +435,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
---- question 20 fill here ---
+![registry_20012026](figures/registry_20012026.png>)
 
 ### Question 21
 
@@ -444,7 +444,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
---- question 21 fill here ---
+![build_20012026](figures/build_20012026.png>)
 
 ### Question 22
 
@@ -459,7 +459,13 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
---- question 22 fill here ---
+We managed to train our model in the cloud using **Vertex AI**. We chose to migrate to Vertex AI from Compute Engine because it provides managed machine learning infrastructure with better integration for ML workloads.
+
+Our training setup works as follows: We created two Vertex AI training configurations - `vertex_ai_config_cpu.yaml` for CPU-only training using *n1-highmem-4* machines, and `vertex_ai_config_gpu.yaml` for GPU-accelerated training using *n1-standard-4* machines. Both configurations specify our custom Docker container from Artifact Registry (`europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest`).
+
+The training process is initiated through `vertex_ai_train.yaml` which submits custom training jobs to Vertex AI. Our Cloud Storage bucket (`mlops_project_data_bucket1`) is automatically mounted at `/gcs/mlops_project_data_bucket1/` during training, providing direct access to our DVC-managed datasets. We use Secret Manager to securely inject the WANDB_API_KEY for experiment tracking.
+
+This setup allows us to run scalable training jobs in the europe-west1 region without managing underlying infrastructure, while maintaining full integration with our data versioning, containerization, and experiment tracking pipeline.
 
 ## Deployment
 
