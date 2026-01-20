@@ -139,7 +139,8 @@ class ArXivDataset(torch.utils.data.Dataset):
 def arxiv_dataset() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Return train and test datasets for ArXiv papers.
 
-    Loads processed data from data/processed directory and returns PyTorch datasets.
+    Loads processed data from data/processed directory or GCS mounted filesystem.
+    Checks /gcs/ first (for Vertex AI), then falls back to local data/processed.
 
     Returns:
         Tuple of (train_dataset, test_dataset).
@@ -147,7 +148,14 @@ def arxiv_dataset() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]
     Raises:
         FileNotFoundError: If processed data files are not found.
     """
-    processed_dir = Path("data/processed")
+    # Try GCS mounted filesystem first (for Vertex AI), then local
+    gcs_processed_dir = Path("/gcs/mlops_project_data_bucket1/data/processed")
+    local_processed_dir = Path("data/processed")
+
+    if gcs_processed_dir.exists() and (gcs_processed_dir / "train_texts.json").exists():
+        processed_dir = gcs_processed_dir
+    else:
+        processed_dir = local_processed_dir
 
     with open(processed_dir / "train_texts.json", "r", encoding="utf-8") as f:
         train_texts = json.load(f)

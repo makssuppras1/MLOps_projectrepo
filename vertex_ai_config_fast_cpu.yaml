@@ -1,0 +1,20 @@
+# Fast training experiment on CPU (fallback when GPU quota is exceeded)
+# Budget limit: $5 maximum = ~25 hours at $0.20/hour
+# Timeout set to 24 hours to stay safely under budget
+scheduling:
+  timeout: "86400s"  # 24 hours (86400 seconds) - prevents exceeding $5 budget
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: n1-highmem-4  # CPU machine with more RAM
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest
+      env:
+      - name: WANDB_API_KEY
+        value: ${WANDB_API_KEY}
+      args:
+      - "experiment=fast"  # Use fast experiment config
+    diskSpec:
+      bootDiskType: pd-ssd
+      bootDiskSizeGb: 100

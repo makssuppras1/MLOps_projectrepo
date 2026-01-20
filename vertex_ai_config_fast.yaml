@@ -1,0 +1,21 @@
+# Budget limit: $5 maximum = ~9 hours at $0.55/hour
+# Timeout set to 8 hours to stay safely under budget
+scheduling:
+  timeout: "28800s"  # 8 hours (28800 seconds) - prevents exceeding $5 budget
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: n1-standard-4
+      acceleratorType: NVIDIA_TESLA_T4
+      acceleratorCount: 1
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest
+      env:
+      - name: WANDB_API_KEY
+        value: ${WANDB_API_KEY}
+      args:
+      - "experiment=fast"  # Use fast experiment config
+    diskSpec:
+      bootDiskType: pd-ssd
+      bootDiskSizeGb: 100

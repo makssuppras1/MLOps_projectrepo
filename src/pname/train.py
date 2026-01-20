@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from typing import Tuple
 
@@ -79,6 +80,15 @@ def train(cfg: DictConfig) -> None:
         cfg: Hydra configuration dictionary containing model, training, and experiment settings.
     """
     logger.info("Training day and night")
+
+    # Merge experiment config into training config if experiment is specified
+    if hasattr(cfg, "experiment") and cfg.experiment is not None and hasattr(cfg.experiment, "training"):
+        # Temporarily disable struct mode to allow merging new keys (like max_samples, max_runtime_hours)
+        OmegaConf.set_struct(cfg.training, False)
+        # Merge experiment training config into base training config
+        cfg.training = OmegaConf.merge(cfg.training, cfg.experiment.training)
+        logger.info("Merged experiment config into training config")
+
     logger.info(f"Configuration:\n{OmegaConf.to_yaml(cfg)}")
 
     # Initialize W&B if API key is available
@@ -113,6 +123,22 @@ def train(cfg: DictConfig) -> None:
 
     # Load dataset
     train_set, _ = arxiv_dataset()
+
+    # Optionally use a subset of data for faster training
+    max_samples = cfg.training.get("max_samples", None)
+    if max_samples is not None:
+        if max_samples > len(train_set):
+            logger.warning(
+                f"max_samples ({max_samples}) is larger than dataset size ({len(train_set)}). Using full dataset."
+            )
+        elif max_samples < len(train_set):
+            # Use generator with seed for reproducible subset selection
+            generator = torch.Generator()
+            generator.manual_seed(cfg.training.seed)
+            indices = torch.randperm(len(train_set), generator=generator)[:max_samples].tolist()
+            train_set = torch.utils.data.Subset(train_set, indices)
+            logger.info(f"Using subset of {max_samples} samples for faster training")
+
     logger.info(f"Dataset loaded: {len(train_set)} training samples")
 
     # Create collate function with tokenizer
@@ -126,6 +152,9 @@ def train(cfg: DictConfig) -> None:
         batch_size=cfg.training.batch_size,
         collate_fn=collate,
         shuffle=True,
+        num_workers=cfg.training.get("num_workers", 4),  # Parallel data loading
+        pin_memory=True if DEVICE.type == "cuda" else False,  # Faster GPU transfer
+        persistent_workers=True if cfg.training.get("num_workers", 0) > 0 else False,
     )
 
     # Instantiate optimizer from config (loss is computed in model forward)
@@ -134,14 +163,39 @@ def train(cfg: DictConfig) -> None:
     logger.info(f"Optimizer: {optimizer}")
     logger.info(f"Batch size: {cfg.training.batch_size}, Epochs: {cfg.training.epochs}")
 
+    # Budget/time limit tracking
+    max_runtime_hours = cfg.training.get("max_runtime_hours", None)
+    start_time = time.time()
+    if max_runtime_hours:
+        max_runtime_seconds = max_runtime_hours * 3600
+        logger.info(f"Maximum runtime limit: {max_runtime_hours} hours ({max_runtime_seconds}s)")
+
     statistics = {"train_loss": [], "train_accuracy": []}
+    training_stopped_early = False
     for epoch in range(cfg.training.epochs):
+        # Check runtime limit before starting epoch
+        if max_runtime_hours:
+            elapsed = time.time() - start_time
+            if elapsed >= max_runtime_seconds:
+                logger.warning(f"Runtime limit reached ({elapsed/3600:.2f} hours). Stopping training early.")
+                logger.info(f"Completed {epoch} out of {cfg.training.epochs} epochs")
+                training_stopped_early = True
+                break
         model.train()
         epoch_loss = 0.0
         epoch_accuracy = 0.0
         num_batches = 0
 
         for i, (input_ids, attention_mask, labels) in enumerate(train_dataloader):
+            # Check runtime limit periodically during training
+            if max_runtime_hours and (i % 100 == 0):  # Check every 100 iterations
+                elapsed = time.time() - start_time
+                if elapsed >= max_runtime_seconds:
+                    logger.warning(f"Runtime limit reached ({elapsed/3600:.2f} hours). Stopping training early.")
+                    logger.info(f"Completed {epoch} out of {cfg.training.epochs} epochs")
+                    training_stopped_early = True
+                    break
+
             # Move to device
             input_ids = input_ids.to(DEVICE)
             attention_mask = attention_mask.to(DEVICE)
@@ -180,6 +234,10 @@ def train(cfg: DictConfig) -> None:
                         "iteration": i,
                     }
                 )
+
+        # Break out of outer loop if training was stopped early
+        if training_stopped_early:
+            break
 
         # Log epoch-level metrics
         avg_epoch_loss = epoch_loss / num_batches if num_batches > 0 else 0.0

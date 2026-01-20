@@ -19,7 +19,8 @@ WORKDIR /
 
 # Install dependencies
 ENV UV_LINK_MODE=copy
-RUN uv sync --locked --no-cache --no-install-project
+RUN uv sync --frozen --no-cache --no-install-project
 
 # Entrypoint for training script
+# Data will be accessed via /gcs/ mounted filesystem in Vertex AI
 ENTRYPOINT ["uv", "run", "src/pname/train.py"]

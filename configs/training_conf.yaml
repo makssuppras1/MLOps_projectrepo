@@ -2,9 +2,10 @@
 training:
   seed: 42  # Random seed for reproducibility
 
-  batch_size: 32
+  batch_size: 64  # Increased from 32 for better GPU utilization
   epochs: 10
   max_length: 512  # Maximum sequence length for tokenization
+  num_workers: 4  # Parallel data loading workers
 
   optimizer:
     _target_: torch.optim.Adam

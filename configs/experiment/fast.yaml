@@ -1,0 +1,12 @@
+# Fast training experiment - optimized for ~1 hour completion
+# Use with GPU: experiment=fast
+# Budget: ~$0.30-0.55 per run (well under $5 limit)
+# @package _global_
+training:
+  seed: 42
+  batch_size: 128  # Larger batch size for GPU efficiency
+  epochs: 3  # Reduced epochs for faster completion
+  max_length: 256  # Reduced sequence length (faster tokenization and processing)
+  num_workers: 4  # Keep parallel data loading
+  max_samples: 20000  # Use subset of data (20k samples instead of ~109k) - ~2.5x faster
+  max_runtime_hours: 8  # Safety limit: stop after 8 hours (~$4.40 max cost)
