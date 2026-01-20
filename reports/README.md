@@ -276,9 +276,9 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 > *We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our*
 > *pipeline*
 >
-> Answer:
+DVC was used for managing the data in our project. We configured DVC with Google Clound Storage (GCS) as our remote storage backend, which allowed us to version control our dataset effectively. For collaboration between team members it offers the advantage of ensuring that everone is working on the same data, for example instead of downloading the dataset and running the preprocessing every time, each team member simply gets the dataset from the cloud. 
 
---- question 10 fill here ---
+In truth it might have been overkill to do data version control for this specific dataset as it is static, and the preprocessing was relatively banal and unlikely to change during the project. If our dataset consisted every scientific paper and was updated every time a new paper was published it would definately make data version control a requirement for this project.
 
 ### Question 11
 
@@ -393,19 +393,13 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
-We used the following six GCP services in our project:
+***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
 
-**Vertex AI**: Used for custom training jobs with configs `vertex_ai_config_cpu.yaml` and `vertex_ai_config_gpu.yaml`. We used machine types n1-standard-4 (GPU) and n1-highmem-4 (CPU) in the europe-west1 region for scalable model training an minizing the geographical distance of the region used to secure a lower cost.
+***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
 
-**Cloud Build**: Automated building and pushing of Docker images using `cloudbuild.yaml` configuration. Also used in `vertex_ai_train.yaml` to submit Vertex AI jobs, providing seamless CI/CD integration.
+***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
 
-**Artifact Registry**: Container registry service that stores our Docker images at `europe-west1-docker.pkg.dev/dtumlops-484310/container-registry` with the `train:latest` image for our training pipeline.
-
-**Cloud Storage (GCS)**: Object storage service with bucket `mlops_project_data_bucket1` used for storing training data. Integrated with DVC for data versioning (configured in `.dvc/config`) and mounted at `/gcs/mlops_project_data_bucket1/` in Vertex AI jobs.
-
-**Secret Manager**: Securely stores sensitive credentials like `WANDB_API_KEY`, which is referenced in `vertex_ai_train.yaml` for secure access during training jobs.
-
-**Cloud Logging**: Enabled in `cloudbuild.yaml` with `CLOUD_LOGGING_ONLY` setting to capture and store Cloud Build operation logs for monitoring and debugging.
+***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
 
 ### Question 18
 
@@ -420,11 +414,9 @@ We used the following six GCP services in our project:
 >
 > Answer:
 
-We used **Vertex AI** rather than directly using Compute Engine for our model training workloads. Vertex AI provides managed machine learning infrastructure that abstracts away the underlying compute resources while still leveraging Google's compute infrastructure. 
+For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
 
-We configured two different machine types: **n1-standard-4** (4 vCPUs, 15 GB memory) for GPU-enabled training and **n1-highmem-4** (4 vCPUs, 26 GB memory) for CPU-only training. All instances were deployed in the **europe-west1** region to minimize latency and costs.
-
-Our training jobs were initiated through custom training configurations (`vertex_ai_config_cpu.yaml` and `vertex_ai_config_gpu.yaml`) which specified the machine types, Docker container images from our Artifact Registry, and mounted our Cloud Storage bucket (`mlops_project_data_bucket1`) at `/gcs/mlops_project_data_bucket1/` for data access. This setup provided us with scalable, managed compute resources without the overhead of manually managing VM instances.
+To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
 
 ### Question 19
 
@@ -433,7 +425,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
-![bucket_20012026.png](figures/bucket_20012026.png)
+--- question 19 fill here ---
 
 ### Question 20
 
@@ -442,7 +434,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
-![registry_20012026.png](figures/registry_20012026.png)
+--- question 20 fill here ---
 
 ### Question 21
 
@@ -451,7 +443,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
-![build_20012026.png](figures/build_20012026.png)
+--- question 21 fill here ---
 
 ### Question 22
 
@@ -466,13 +458,7 @@ Our training jobs were initiated through custom training configurations (`vertex
 >
 > Answer:
 
-We managed to train our model in the cloud using **Vertex AI**. We chose to migrate to Vertex AI from Compute Engine because it provides managed machine learning infrastructure with better integration for ML workloads.
-
-Our training setup works as follows: We created two Vertex AI training configurations - `vertex_ai_config_cpu.yaml` for CPU-only training using *n1-highmem-4* machines, and `vertex_ai_config_gpu.yaml` for GPU-accelerated training using *n1-standard-4* machines. Both configurations specify our custom Docker container from Artifact Registry (`europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest`).
-
-The training process is initiated through `vertex_ai_train.yaml` which submits custom training jobs to Vertex AI. Our Cloud Storage bucket (`mlops_project_data_bucket1`) is automatically mounted at `/gcs/mlops_project_data_bucket1/` during training, providing direct access to our DVC-managed datasets. We use Secret Manager to securely inject the WANDB_API_KEY for experiment tracking.
-
-This setup allows us to run scalable training jobs in the europe-west1 region without managing underlying infrastructure, while maintaining full integration with our data versioning, containerization, and experiment tracking pipeline.
+--- question 22 fill here ---
 
 ## Deployment
 
