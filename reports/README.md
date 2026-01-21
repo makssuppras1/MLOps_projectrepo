@@ -52,42 +52,42 @@ will check the repositories and the code to verify your answers.
 
 ### Week 1
 
-* [ ] Create a git repository (M5)
-* [ ] Make sure that all team members have write access to the GitHub repository (M5)
-* [ ] Create a dedicated environment for you project to keep track of your packages (M2)
-* [ ] Create the initial file structure using cookiecutter with an appropriate template (M6)
-* [ ] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
-* [ ] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
-* [ ] Remember to either fill out the `requirements.txt`/`requirements_dev.txt` files or keeping your
+* [x] Create a git repository (M5)
+* [x] Make sure that all team members have write access to the GitHub repository (M5)
+* [x] Create a dedicated environment for you project to keep track of your packages (M2)
+* [x] Create the initial file structure using cookiecutter with an appropriate template (M6)
+* [x] Fill out the `data.py` file such that it downloads whatever data you need and preprocesses it (if necessary) (M6)
+* [x] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
+* [x] Remember to either fill out the `requirements.txt`/`requirements_dev.txt` files or keeping your
     `pyproject.toml`/`uv.lock` up-to-date with whatever dependencies that you are using (M2+M6)
 * [ ] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
 * [ ] Do a bit of code typing and remember to document essential parts of your code (M7)
-* [ ] Setup version control for your data or part of your data (M8)
+* [x] Setup version control for your data or part of your data (M8)
 * [ ] Add command line interfaces and project commands to your code where it makes sense (M9)
-* [ ] Construct one or multiple docker files for your code (M10)
-* [ ] Build the docker files locally and make sure they work as intended (M10)
-* [ ] Write one or multiple configurations files for your experiments (M11)
-* [ ] Used Hydra to load the configurations and manage your hyperparameters (M11)
+* [x] Construct one or multiple docker files for your code (M10)
+* [x] Build the docker files locally and make sure they work as intended (M10)
+* [x] Write one or multiple configurations files for your experiments (M11)
+* [x] Used Hydra to load the configurations and manage your hyperparameters (M11)
 * [ ] Use profiling to optimize your code (M12)
-* [ ] Use logging to log important events in your code (M14)
-* [ ] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
+* [x] Use logging to log important events in your code (M14)
+* [x] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
 * [ ] Consider running a hyperparameter optimization sweep (M14)
 * [ ] Use PyTorch-lightning (if applicable) to reduce the amount of boilerplate in your code (M15)
 
 ### Week 2
 
-* [ ] Write unit tests related to the data part of your code (M16)
-* [ ] Write unit tests related to model construction and or model training (M16)
-* [ ] Calculate the code coverage (M16)
-* [ ] Get some continuous integration running on the GitHub repository (M17)
-* [ ] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
-* [ ] Add a linting step to your continuous integration (M17)
-* [ ] Add pre-commit hooks to your version control setup (M18)
-* [ ] Add a continues workflow that triggers when data changes (M19)
-* [ ] Add a continues workflow that triggers when changes to the model registry is made (M19)
-* [ ] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
-* [ ] Create a trigger workflow for automatically building your docker images (M21)
-* [ ] Get your model training in GCP using either the Engine or Vertex AI (M21)
+* [x] Write unit tests related to the data part of your code (M16)
+* [x] Write unit tests related to model construction and or model training (M16)
+* [x] Calculate the code coverage (M16)
+* [x] Get some continuous integration running on the GitHub repository (M17)
+* [x] Add caching and multi-os/python/pytorch testing to your continuous integration (M17)
+* [x] Add a linting step to your continuous integration (M17)
+* [x] Add pre-commit hooks to your version control setup (M18)
+* [x] Add a continues workflow that triggers when data changes (M19)
+* [x] Add a continues workflow that triggers when changes to the model registry is made (M19)
+* [x] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
+* [x] Create a trigger workflow for automatically building your docker images (M21)
+* [x] Get your model training in GCP using either the Engine or Vertex AI (M21)
 * [ ] Create a FastAPI application that can do inference using your model (M22)
 * [ ] Deploy your model in GCP using either Functions or Run as the backend (M23)
 * [ ] Write API tests for your application and setup continues integration for these (M24)
@@ -172,7 +172,8 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)), 
 2) Clone the repository, 
 3) Run `uv sync` to install all dependencies exactly as specified in the lock file, 
-4) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
+4) Download the data to your local repository buy running the following command in the terminal: ``uv run sh curl_arxiv-scientific-research-papers-dataset``
+5) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
 
 ### Question 5
 
@@ -188,7 +189,9 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 >
 > Answer:
 
---- question 5 fill here ---
+From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis. 
+
+We deviated from the template by adding several project-specific files: `tasks.py` for invoke commands, guide files (`LOGGING_GUIDE.md`, `profiling_guide.md`, `config_guide.md`), a data download script (`curl_arxiv-scientific-research-papers-dataset`), and various output directories. The core template structure was maintained while adding these practical extensions for our specific MLOps workflow.
 
 ### Question 6
 
@@ -221,8 +224,13 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 > *application but also ... .*
 >
 > Answer:
+I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_training) with the focus on testing the code for our data, model and train scripts.
 
---- question 7 fill here ---
+*test_data.py* focuses on the data processing/preprocessing pipeline; Validating that the ArXivDataset classes are initialized correctly, that the expected output files are created, that the train/val/tests split ratios are correct, and checks that the category-to-label mapping are created correctly for classification.
+
+*test_model.py* focuses on model architecture and behavior; Initialization, forward passes, output validation, encoder freezing, parameter counting, and gradient flow.
+
+*test_training.py* focuses on training pipeline and reproducibility; Seed reproducibility, batch collation, and training dynamics.
 
 ### Question 8
 
@@ -237,7 +245,9 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 >
 > Answer:
 
---- question 8 fill here ---
+The total code coverage of our code is **48%**, covering 136 out of 285 total statements across our main modules. We are far from 100% coverage, and even if we achieved 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric showing which lines were executed during testing, but doesn't guarantee test quality or correctness. High coverage can provide false confidence if tests only verify code execution.
+
+Our current coverage breakdown shows: `data.py` at 61%, `model.py` at 71%, and `train.py` at 27%. This indicates good coverage of our core data processing and model functionality, but limited coverage of the training pipeline. Coverage doesn't account for edge cases, integration issues, or logical errors in test assertions themselves. Modules like API, evaluation, and visualization remain completely untested, representing areas for test suite expansion.
 
 ### Question 9
 
@@ -267,9 +277,9 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 > *We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our*
 > *pipeline*
 >
-> Answer:
+DVC was used for managing the data in our project. We configured DVC with Google Clound Storage (GCS) as our remote storage backend, which allowed us to version control our dataset effectively. For collaboration between team members it offers the advantage of ensuring that everone is working on the same data, for example instead of downloading the dataset and running the preprocessing every time, each team member simply gets the dataset from the cloud. 
 
---- question 10 fill here ---
+In truth it might have been overkill to do data version control for this specific dataset as it is static, and the preprocessing was relatively banal and unlikely to change during the project. If our dataset consisted every scientific paper and was updated every time a new paper was published it would definately make data version control a requirement for this project.
 
 ### Question 11
 
@@ -384,7 +394,13 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 17 fill here ---
+***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+
+***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
+
+***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
+
+***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
 
 ### Question 18
 
@@ -399,7 +415,9 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 18 fill here ---
+For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
+
+To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
 
 ### Question 19
 
@@ -408,7 +426,7 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 19 fill here ---
+![bucket_20012026](figures/bucket_20012026.png)
 
 ### Question 20
 
@@ -417,7 +435,7 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 20 fill here ---
+![registry_20012026](figures/registry_20012026.png)
 
 ### Question 21
 
@@ -426,7 +444,7 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 21 fill here ---
+![build_20012026](figures/build_20012026.png)
 
 ### Question 22
 
@@ -441,7 +459,13 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 >
 > Answer:
 
---- question 22 fill here ---
+We managed to train our model in the cloud using **Vertex AI**. We chose to migrate to Vertex AI from Compute Engine because it provides managed machine learning infrastructure with better integration for ML workloads.
+
+Our training setup works as follows: We created two Vertex AI training configurations - `vertex_ai_config_cpu.yaml` for CPU-only training using *n1-highmem-4* machines, and `vertex_ai_config_gpu.yaml` for GPU-accelerated training using *n1-standard-4* machines. Both configurations specify our custom Docker container from Artifact Registry (`europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest`).
+
+The training process is initiated through `vertex_ai_train.yaml` which submits custom training jobs to Vertex AI. Our Cloud Storage bucket (`mlops_project_data_bucket1`) is automatically mounted at `/gcs/mlops_project_data_bucket1/` during training, providing direct access to our DVC-managed datasets. We use Secret Manager to securely inject the WANDB_API_KEY for experiment tracking.
+
+This setup allows us to run scalable training jobs in the europe-west1 region without managing underlying infrastructure, while maintaining full integration with our data versioning, containerization, and experiment tracking pipeline.
 
 ## Deployment
 

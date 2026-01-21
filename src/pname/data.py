@@ -7,6 +7,13 @@ from pathlib import Path
 import torch
 import typer
 
+try:
+    from google.cloud import storage
+
+    GCS_AVAILABLE = True
+except ImportError:
+    GCS_AVAILABLE = False
+
 
 def preprocess_data(
     raw_dir: str = typer.Argument(..., help="Path to raw data directory"),
@@ -196,7 +203,7 @@ def arxiv_dataset(
         Tuple of (train_dataset, val_dataset, test_dataset).
 
     Raises:
-        FileNotFoundError: If processed data files are not found.
+        FileNotFoundError: If processed data files are not found locally or in GCS.
     """
     # Try GCS mounted filesystem first (for Vertex AI), then local
     # Check regional bucket first (europe-west1), then multi-region, then local
@@ -211,6 +218,51 @@ def arxiv_dataset(
     else:
         processed_dir = local_processed_dir
 
+    # Use GCS mount if available, otherwise use local directory
+    if gcs_mount_path.exists() and (gcs_mount_path / "train_texts.json").exists():
+        print(f"Using Vertex AI GCS mount: {gcs_mount_path}")
+        processed_dir = gcs_mount_path
+    else:
+        processed_dir.mkdir(parents=True, exist_ok=True)
+
+        # Required files
+        required_files = [
+            "train_texts.json",
+            "train_labels.pt",
+            "test_texts.json",
+            "test_labels.pt",
+            "category_mapping.json",
+        ]
+
+        # Check if files exist locally, download from GCS if missing
+        missing_files = [f for f in required_files if not (processed_dir / f).exists()]
+
+        if missing_files and GCS_AVAILABLE:
+            try:
+                client = storage.Client()
+                bucket = client.bucket(bucket_name)
+
+                for filename in missing_files:
+                    blob_path = f"{gcs_prefix}/{filename}"
+                    blob = bucket.blob(blob_path)
+
+                    if blob.exists():
+                        local_path = processed_dir / filename
+                        blob.download_to_filename(local_path)
+                        print(f"Downloaded {filename} from GCS")
+                    else:
+                        raise FileNotFoundError(f"File {filename} not found in GCS bucket {bucket_name}/{blob_path}")
+            except Exception as e:
+                raise FileNotFoundError(
+                    f"Failed to download data from GCS: {e}. " f"Missing files: {missing_files}"
+                ) from e
+        elif missing_files:
+            raise FileNotFoundError(
+                f"Required data files are missing: {missing_files}. "
+                "Install google-cloud-storage to enable automatic download from GCS."
+            )
+
+    # Load the data files
     with open(processed_dir / "train_texts.json", "r", encoding="utf-8") as f:
         train_texts = json.load(f)
     train_labels = torch.load(processed_dir / "train_labels.pt").long()
