@@ -5,10 +5,10 @@
 training:
   seed: 42
   batch_size: 128  # Increased for faster training (fewer iterations)
-  epochs: 1  # Single epoch
+  epochs: 1  # Single epoch - exactly 1 epoch as required
   max_length: 32  # Very short sequences for fast tokenization and processing
   num_workers: 0  # No parallel workers to reduce overhead
-  max_samples: 200  # Minimal samples for ultra-fast training (~100x faster than full dataset)
-  max_steps: 50  # Hard cap: stop after 50 steps regardless of epoch
+  max_samples: 2000  # Exactly 2,000 papers as required
+  max_steps: null  # Remove step limit to allow full epoch
   max_runtime_hours: 0.5  # Strict 30-minute limit
   log_interval: 10  # Less frequent logging

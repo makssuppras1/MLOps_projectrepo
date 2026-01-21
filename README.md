@@ -12,6 +12,46 @@ We aim to take a transformer model, train it for our text classification purpose
 
 We will start with the [arXiv Scientific Research Papers Dataset](https://www.kaggle.com/datasets/sumitm004/arxiv-scientific-research-papers-dataset), which consists of 136,238 scientific papers. Our MLOps focus for this data will be on Data Version Control (DVC). Instead of just having a local folder of data, we will use DVC to track versions of our dataset. This way, if we update the data or add new papers later, we can "roll back" to previous versions just like we do with code in Git.
 
+### Data Versioning with DVC
+
+**Setup DVC (First Time):**
+```bash
+# Initialize DVC (if not already done)
+dvc init
+# Configure remote storage (GCS)
+dvc remote add -d myremote gs://your-bucket-name/dvc-storage
+```
+
+**Track Data Files:**
+```bash
+# Track raw data
+dvc add data/raw/train_texts.json
+dvc add data/processed/train_texts.json
+
+# Commit DVC metadata to Git
+git add data/raw/train_texts.json.dvc data/processed/train_texts.json.dvc .dvc/config
+git commit -m "Track data with DVC"
+```
+
+**Push Data to GCS:**
+```bash
+dvc push
+```
+
+**Pull Data (For Teammates - 100% Reproducibility):**
+```bash
+# Clone the repo
+git clone <repo-url>
+cd MLOps_projectrepo
+
+# Pull the exact same data version used in training
+dvc pull
+
+# Now you have the exact same dataset version, ensuring 100% reproducibility!
+```
+
+**The "Flex":** Any teammate can run `dvc pull` and get the exact same dataset version you used for training. This ensures 100% reproducibility - no "it works on my machine" issues with data. DVC tracks data versions just like Git tracks code versions, but stores the actual data in GCS for efficient versioning.
+
 **Models and Tools**
 
 We will be using the DistilBERT base model from hugging face, and training it using our dataset for the purpose of classifying the research article categories based on their summary. We will keep the architecture simple so we can spend our energy on the following MLOps stack:
@@ -36,42 +76,58 @@ The directory structure of the project looks like this:
 │   └── workflows/
 │       └── tests.yaml
 ├── configs/                  # Configuration files
+│   ├── experiment/          # Experiment configs
+│   └── vertex_ai/          # Vertex AI job configs
 ├── data/                     # Data directory
 │   ├── processed
 │   └── raw
 ├── dockerfiles/              # Dockerfiles
-│   ├── api.Dockerfile
-│   └── train.Dockerfile
+│   ├── api.dockerfile
+│   ├── evaluate.dockerfile
+│   └── train.dockerfile
+├── Dockerfile                 # Root Dockerfile for API (production)
 ├── docs/                     # Documentation
-│   ├── mkdocs.yml
+│   ├── INVOKE_COMMANDS.md
+│   ├── LOGGING_GUIDE.md
+│   ├── MODEL_USAGE_GUIDE.md
+│   ├── PRE_FLIGHT_CHECKLIST.md
+│   ├── VERTEX_AI_TRAINING_GUIDE.md
+│   ├── mkdocs.yaml
+│   ├── profiling_guide.md
 │   └── source/
 │       └── index.md
+├── scripts/                  # Utility scripts
+│   ├── download_dataset.sh
+│   └── preflight_check.sh
 ├── models/                   # Trained models
 ├── notebooks/                # Jupyter notebooks
 ├── reports/                  # Reports
 │   └── figures/
+├── app/                      # FastAPI application
+│   ├── __init__.py
+│   └── main.py              # API server
 ├── src/                      # Source code
-│   ├── project_name/
+│   ├── pname/
 │   │   ├── __init__.py
-│   │   ├── api.py
 │   │   ├── data.py
 │   │   ├── evaluate.py
-│   │   ├── models.py
+│   │   ├── model.py
+│   │   ├── model_tfidf.py
 │   │   ├── train.py
+│   │   ├── train_tfidf.py
 │   │   └── visualize.py
 └── tests/                    # Tests
 │   ├── __init__.py
-│   ├── test_api.py
 │   ├── test_data.py
-│   └── test_model.py
+│   ├── test_model.py
+│   └── test_training.py
 ├── .gitignore
 ├── .pre-commit-config.yaml
 ├── LICENSE
-├── pyproject.toml            # Python project file
+├── pyproject.toml            # Python project file (uses uv for dependency management)
+├── uv.lock                   # Locked dependencies
 ├── README.md                 # Project README
-├── requirements.txt          # Project requirements
-├── requirements_dev.txt      # Development requirements
-└── tasks.py                  # Project tasks
+└── tasks.py                  # Project tasks (invoke commands)
 ```
 
 Created using [mlops_template](https://github.com/SkafteNicki/mlops_template),
@@ -80,14 +136,14 @@ started with Machine Learning Operations (MLOps).
 
 ## Running Scripts
 
-The project includes several scripts for data processing, training, evaluation, and visualization. Scripts can be run directly using `uv run` or via the `invoke` task runner.
+The project includes several scripts for data processing, training, evaluation, and visualization. Scripts can be run directly using `uv run` or via the `invoke` task runner (use `uv run invoke <task>`).
 
 ### Download Dataset using with cURL
 
 standing in the root of the repo
 
 ```bash
-uv run sh curl_arxiv-scientific-research-papers-dataset
+uv run sh scripts/download_dataset.sh
 ```
 
 ### Data Preprocessing
@@ -97,7 +153,7 @@ Before training, you need to preprocess the raw data. This script combines the s
 **Using invoke (recommended):**
 
 ```bash
-invoke preprocess-data
+uv run invoke preprocess-data
 ```
 
 **Direct execution:**
@@ -118,7 +174,7 @@ This will:
 To train the model with default parameters:
 
 ```bash
-invoke train
+uv run invoke train
 ```
 
 Or directly:
@@ -174,6 +230,25 @@ uv run src/pname/visualize.py models/model.pth --figure-name my_embeddings.png
 
 This generates a t-SNE visualization of the model's embeddings colored by digit class, saved to `reports/figures/`.
 
+### Cloud Training on Vertex AI
+
+**⚠️ CRITICAL: Before submitting any Vertex AI job, ALWAYS run:**
+
+```bash
+# Run before EVERY job submission
+./scripts/preflight_check.sh
+```
+
+This automated script checks and fixes:
+- Platform architecture (linux/amd64 for Mac)
+- Service account permissions
+- Image exists in correct region
+- Config validation
+- Data accessibility
+- Quotas
+
+See `docs/VERTEX_AI_TRAINING_GUIDE.md` for full instructions.
+
 ### Getting Help
 
 To see all available commands and options for each script:
@@ -185,11 +260,11 @@ uv run src/pname/data.py --help
 uv run src/pname/visualize.py --help
 ```
 
-For invoke tasks:
+For invoke tasks (requires `uv run` prefix):
 
 ```bash
-invoke --list
-invoke --help <task-name>
+uv run invoke --list
+uv run invoke --help <task-name>
 ```
 
 ### Example Workflow
@@ -197,13 +272,13 @@ invoke --help <task-name>
 1. **Preprocess the data:**
 
    ```bash
-   invoke preprocess-data
+   uv run invoke preprocess-data
    ```
 
 2. **Train the model:**
 
    ```bash
-   invoke train
+   uv run invoke train
    ```
 
    Or with custom parameters:

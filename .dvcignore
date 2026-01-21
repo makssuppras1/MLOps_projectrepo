@@ -1,3 +1,36 @@
-# Add patterns of files dvc should ignore, which could improve
-# the performance. Learn more at
-# https://dvc.org/doc/user-guide/dvcignore
+# DVC ignore file - patterns to exclude from DVC tracking
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+.env.local
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.pt
+*.pth
+*.ckpt
+outputs/
+reports/figures/
+wandb/
+artifacts/
+.cache/

@@ -81,8 +81,8 @@ def visualize(
             # Use [CLS] token representation
             return outputs.last_hidden_state[:, 0]  # [B, hidden_size]
 
-    # Load test dataset
-    _, test_set = arxiv_dataset()
+    # Load test dataset (with same category reduction as training)
+    _, _, test_set = arxiv_dataset(max_categories=model.num_labels)
 
     # Limit samples if needed
     if len(test_set) > max_samples:

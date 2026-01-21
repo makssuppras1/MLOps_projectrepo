@@ -202,3 +202,11 @@ data/processed/*.pt
 
 # Weights & Biases experiment tracking
 wandb/
+
+# Temporary files and artifacts
+artifacts/
+evaluation_output.log
+training.log
+*.pkl
+*.joblib
+/tmp/

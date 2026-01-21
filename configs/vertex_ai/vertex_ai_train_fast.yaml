@@ -1,3 +1,6 @@
+# Cloud Build workflow for fast training on Vertex AI with GPU
+# ⚠️ CRITICAL: Docker image MUST be built for linux/amd64 platform
+# The preflight_check.sh script ensures this before building
 steps:
 - name: "alpine"
   id: "Replace values in the fast training config"
@@ -9,9 +12,18 @@ steps:
       envsubst < vertex_ai_config_fast.yaml > vertex_ai_config.yaml
   secretEnv: ['WANDB_API_KEY']
 
+- name: "alpine"
+  id: "Debug: print config.yaml"
+  entrypoint: "sh"
+  args:
+    - '-c'
+    - |
+      cat vertex_ai_config.yaml
+  waitFor: ['Replace values in the fast training config']
+
 - name: 'gcr.io/cloud-builders/gcloud'
   id: 'Train on vertex AI with GPU (fast)'
-  waitFor: ['Replace values in the fast training config']
+  waitFor: ['Debug: print config.yaml']
   args: [
     'ai',
     'custom-jobs',
@@ -21,10 +33,11 @@ steps:
     '--display-name',
     '${_JOB_NAME}',
     '--config',
-    'vertex_ai_config.yaml',
+    '${_VERTEX_TRAIN_CONFIG}',
   ]
 substitutions:
   _JOB_NAME: 'fast-training-${BUILD_ID}'
+  _VERTEX_TRAIN_CONFIG: 'vertex_ai_config.yaml'
 availableSecrets:
   secretManager:
   - versionName: projects/$PROJECT_ID/secrets/WANDB_API_KEY/versions/latest

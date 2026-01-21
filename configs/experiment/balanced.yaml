@@ -1,0 +1,17 @@
+# Balanced training experiment - good quality with reasonable training time
+# Use with: experiment=balanced
+# Optimized for faster training while maintaining quality
+# @package _global_
+training:
+  seed: 42
+  batch_size: 128  # Larger batch for fewer iterations (faster training)
+  epochs: 1  # Single epoch - exactly 1 epoch as required
+  max_length: 128  # Reduced from 256 for faster tokenization/processing (still captures context)
+  num_workers: 0  # No parallel workers to reduce overhead
+  max_samples: 2000  # Exactly 2,000 papers as required
+  max_steps: null  # Remove step limit to allow full epoch
+  max_runtime_hours: 2.0  # 2 hour limit for safety
+  log_interval: 20  # Moderate logging frequency
+  optimizer:
+    lr: 0.002  # Increased from 0.0001 for faster convergence (10x faster learning)
+    # Adam default betas (0.9, 0.999) are fine for fast training

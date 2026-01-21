@@ -1,0 +1,25 @@
+# CRITICAL: Pre-Flight Checks Before Vertex AI Jobs
+
+**ALWAYS RUN PRE-FLIGHT CHECK BEFORE SUBMITTING ANY VERTEX AI JOB:**
+
+```bash
+# Run before EVERY job submission
+./scripts/preflight_check.sh
+```
+
+This script checks:
+- Platform architecture (linux/amd64 for Mac)
+- Service account permissions
+- Image exists in correct region
+- Config validation
+- Data accessibility
+- Quotas
+
+**Common issues that MUST be checked:**
+1. Platform mismatch (ARM64 Mac → must build for linux/amd64)
+2. Image not in correct region
+3. Missing service account permissions
+4. Wrong Hydra config path (absolute /configs for Docker)
+5. Data not accessible
+
+See `docs/PRE_FLIGHT_CHECKLIST.md` for full details.

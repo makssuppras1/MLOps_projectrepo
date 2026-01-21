@@ -1,4 +1,7 @@
 steps:
+# ⚠️ CRITICAL: Build for linux/amd64 platform (required for GCP Vertex AI)
+# The Dockerfile specifies FROM --platform=linux/amd64 which ensures correct platform
+# Cloud Build runs on linux/amd64 machines, so images will be linux/amd64
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build container image'
   args: [

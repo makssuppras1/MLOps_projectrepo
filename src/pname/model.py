@@ -3,11 +3,14 @@ from typing import Dict, Optional, Tuple, Union
 import torch
 from omegaconf import DictConfig
 from torch import nn
-from transformers import DistilBertModel
+from transformers import AutoModel, BertModel, DistilBertModel
 
 
 class MyAwesomeModel(nn.Module):
-    """DistilBERT-based multi-class text classifier."""
+    """Transformer-based multi-class text classifier.
+
+    Supports DistilBERT, TinyBERT, and other BERT-based models.
+    """
 
     def __init__(self, model_cfg: DictConfig = None) -> None:
         super().__init__()
@@ -25,9 +28,28 @@ class MyAwesomeModel(nn.Module):
         self.num_labels = model_cfg.num_labels
         self.model_name = model_cfg.model_name
 
-        # Load pretrained DistilBERT encoder
-        self.encoder = DistilBertModel.from_pretrained(model_cfg.model_name)
-        hidden_size = self.encoder.config.dim
+        # Load pretrained encoder (supports DistilBERT, TinyBERT, BERT, etc.)
+        # Use AutoModel for flexibility with different architectures
+        try:
+            # Try AutoModel first (works with most models)
+            self.encoder = AutoModel.from_pretrained(model_cfg.model_name)
+        except Exception:
+            # Fallback to specific models if needed
+            if "distilbert" in model_cfg.model_name.lower():
+                self.encoder = DistilBertModel.from_pretrained(model_cfg.model_name)
+            elif "tinybert" in model_cfg.model_name.lower() or "bert" in model_cfg.model_name.lower():
+                self.encoder = BertModel.from_pretrained(model_cfg.model_name)
+            else:
+                self.encoder = AutoModel.from_pretrained(model_cfg.model_name)
+
+        # Get hidden size (different models use different attribute names)
+        if hasattr(self.encoder.config, "dim"):
+            hidden_size = self.encoder.config.dim  # DistilBERT
+        elif hasattr(self.encoder.config, "hidden_size"):
+            hidden_size = self.encoder.config.hidden_size  # BERT, TinyBERT
+        else:
+            # Fallback: try to infer from first layer
+            hidden_size = self.encoder.config.hidden_size if hasattr(self.encoder.config, "hidden_size") else 768
 
         # Classification head
         self.dropout = nn.Dropout(model_cfg.dropout)
@@ -100,7 +122,7 @@ class MyAwesomeModel(nn.Module):
 
     def freeze_encoder(self, freeze: bool = True) -> None:
         """
-        Freeze or unfreeze DistilBERT encoder parameters.
+        Freeze or unfreeze encoder parameters.
 
         Args:
             freeze: If True, freeze encoder; if False, unfreeze.

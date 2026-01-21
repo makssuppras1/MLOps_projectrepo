@@ -1,0 +1,8 @@
+# TF-IDF + XGBoost training - Optimized for accuracy
+# Use with: experiment=tfidf_xgboost model=model_tfidf
+# Optimized hyperparameters for better accuracy while remaining fast
+# @package _global_
+training:
+  seed: 42
+  max_samples: null  # Use full dataset for maximum accuracy (XGBoost is fast enough)
+  figure_save_path: "reports/figures/confusion_matrix_tfidf.png"
