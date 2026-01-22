@@ -1,0 +1,26 @@
+# Vertex AI Custom Job Configuration for Optimized DistilBERT
+# Uses gradual unfreezing and differential learning rates
+# ⚠️ BEFORE SUBMITTING: Run ./scripts/preflight_check.sh
+scheduling:
+  timeout: 3600s  # 1 hour (should finish faster with optimizations)
+
+# Base output directory - Model will be saved here
+baseOutputDirectory:
+  outputUriPrefix: gs://mlops_project_data_bucket1-europe-west1/experiments/optimized_distilbert
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: e2-standard-4  # 4 vCPUs
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest
+      env:
+        - name: WANDB_API_KEY
+          value: ${WANDB_API_KEY}  # Will be replaced by sed before submission
+        - name: WANDB_PROJECT
+          value: "pname-arxiv-classifier"
+      args:
+        - "experiment=optimized_distilbert"
+    diskSpec:
+      bootDiskType: pd-ssd
+      bootDiskSizeGb: 100

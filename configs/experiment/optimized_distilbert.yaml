@@ -1,0 +1,27 @@
+# Optimized DistilBERT training with gradual unfreezing and differential learning rates
+# Use with: experiment=optimized_distilbert
+# Strategy:
+#   - Epoch 0: Train only classifier head (encoder frozen) with LR 1e-3
+#   - Epoch 1+: Unfreeze encoder, use LR 1e-5 for encoder, 1e-3 for classifier
+# @package _global_
+training:
+  seed: 42
+  batch_size: 128  # Larger batch for stable gradients
+  epochs: 4  # 1 epoch classifier-only + 3 epochs full fine-tuning
+  max_length: 256  # Full context for better accuracy
+  num_workers: 0
+  max_samples: null  # Use full dataset for best accuracy
+  max_steps: null
+  max_runtime_hours: 1.0  # 1 hour limit
+  log_interval: 50
+
+  # Differential learning rates
+  encoder_lr: 1e-5  # Lower LR for encoder (careful fine-tuning)
+  classifier_lr: 1e-3  # Higher LR for classifier (faster learning)
+
+  optimizer:
+    _target_: torch.optim.Adam
+    # Base LR will be overridden by differential LRs
+    lr: 1e-3
+    betas: [0.9, 0.999]
+    weight_decay: 0.01

@@ -1,0 +1,6 @@
+# Main configuration file for TF-IDF + XGBoost
+defaults:
+  - model_tfidf
+  - training_conf_tfidf
+  - experiment: tfidf_xgboost
+  - _self_

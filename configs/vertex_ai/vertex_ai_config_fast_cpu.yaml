@@ -1,0 +1,30 @@
+# Fast training experiment on CPU (fallback when GPU quota is exceeded)
+# Training: 1 epoch, 2000 samples, using e2-highmem-4 with SPOT instances
+# Timeout set to 30 minutes for safety
+#
+# ⚠️ BEFORE SUBMITTING: Run ./scripts/preflight_check.sh
+# This ensures platform (linux/amd64), permissions, image region, and configs are correct.
+scheduling:
+  timeout: "1800s"  # 30 minutes (1800 seconds) - more than enough for ultra-fast training
+
+# Base output directory - CRITICAL: This sets AIP_MODEL_DIR environment variable
+# Model will be saved to: gs://mlops_project_data_bucket1-europe-west1/experiments/fast-cpu/trained_model.pt
+# Vertex AI automatically sets AIP_MODEL_DIR to point to this location
+baseOutputDirectory:
+  outputUriPrefix: gs://mlops_project_data_bucket1-europe-west1/experiments/fast-cpu
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: e2-highmem-4  # Changed from n1-highmem-4 to e2-highmem-4
+    replicaCount: 1
+    preemptible: true  # Use SPOT (preemptible) instances for faster scheduling and lower cost
+    containerSpec:
+      imageUri: europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest
+      env:
+      - name: WANDB_API_KEY
+        value: ${WANDB_API_KEY}
+      args:
+      - "experiment=fast"  # Use fast experiment config
+    diskSpec:
+      bootDiskType: pd-ssd
+      bootDiskSizeGb: 100

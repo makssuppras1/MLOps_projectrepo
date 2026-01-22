@@ -1,0 +1,31 @@
+# Vertex AI Custom Job Configuration for TF-IDF + XGBoost
+# Fast training (1-2 minutes), perfect for hyperparameter tuning
+# ⚠️ BEFORE SUBMITTING: Run ./scripts/preflight_check.sh
+scheduling:
+  timeout: 600s  # 10 minutes (should finish in 1-2 minutes)
+
+# Base output directory - Model will be saved here
+baseOutputDirectory:
+  outputUriPrefix: gs://mlops_project_data_bucket1-europe-west1/experiments/tfidf_xgboost
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: e2-highmem-4  # 4 vCPUs, 32GB RAM (needed for large TF-IDF matrices)
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest
+      env:
+        - name: WANDB_API_KEY
+          value: ${WANDB_API_KEY}  # Will be replaced by sed before submission
+        - name: WANDB_PROJECT
+          value: "pname-arxiv-classifier"
+      # Override entrypoint to run train_tfidf.py instead of train.py
+      command:
+        - "uv"
+        - "run"
+        - "src/pname/train_tfidf.py"
+      args:
+        - "experiment=tfidf_xgboost"
+    diskSpec:
+      bootDiskType: pd-ssd
+      bootDiskSizeGb: 100

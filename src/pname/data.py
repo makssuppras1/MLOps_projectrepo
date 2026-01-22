@@ -1,6 +1,7 @@
 import csv
 import json
 import random
+from collections import Counter
 from pathlib import Path
 
 import torch
@@ -17,25 +18,39 @@ except ImportError:
 def preprocess_data(
     raw_dir: str = typer.Argument(..., help="Path to raw data directory"),
     processed_dir: str = typer.Argument(..., help="Path to processed data directory"),
-    test_split: float = typer.Option(0.2, help="Fraction of data to use for testing"),
-    seed: int = typer.Option(42, help="Random seed for train/test split"),
+    train_split: float = typer.Option(0.7, help="Fraction of data to use for training"),
+    val_split: float = typer.Option(0.15, help="Fraction of data to use for validation"),
+    test_split: float = typer.Option(0.15, help="Fraction of data to use for testing"),
+    seed: int = typer.Option(42, help="Random seed for train/val/test split"),
+    num_categories: int = typer.Option(5, help="Number of categories to keep (top N most frequent)"),
 ) -> None:
     """Process raw ArXiv data and save it to processed directory.
 
     Loads ArXiv dataset from raw_dir, processes text (title + abstract),
-    encodes categories as labels, splits into train/test, and saves to processed_dir.
+    filters to top N categories, encodes categories as labels, splits into train/val/test,
+    and saves to processed_dir.
 
     Args:
         raw_dir: Path to directory containing raw CSV files.
         processed_dir: Path to directory where processed data will be saved.
-        test_split: Fraction of data to use for testing (default: 0.2).
-        seed: Random seed for reproducible train/test split (default: 42).
+        train_split: Fraction of data to use for training (default: 0.7).
+        val_split: Fraction of data to use for validation (default: 0.15).
+        test_split: Fraction of data to use for testing (default: 0.15).
+        seed: Random seed for reproducible train/val/test split (default: 42).
+        num_categories: Number of categories to keep - top N most frequent (default: 5).
 
     Raises:
         FileNotFoundError: If no CSV file is found in raw_dir.
+        ValueError: If train_split + val_split + test_split != 1.0.
     """
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
+
+    # Validate splits sum to 1.0
+    if abs(train_split + val_split + test_split - 1.0) > 1e-6:
+        raise ValueError(
+            f"train_split + val_split + test_split must equal 1.0, got {train_split + val_split + test_split}"
+        )
 
     # Create processed directory if it doesn't exist
     processed_dir.mkdir(parents=True, exist_ok=True)
@@ -53,9 +68,9 @@ def preprocess_data(
     with open(csv_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Combine title and abstract
+            # Combine title and abstract (support both "abstract" and "summary" column names)
             title = row.get("title", "").strip()
-            abstract = row.get("abstract", "").strip()
+            abstract = row.get("abstract", row.get("summary", "")).strip()
             text = f"{title} {abstract}".strip()
 
             # Get category (support both "category" and "categories" column names)
@@ -67,29 +82,54 @@ def preprocess_data(
                 texts.append(text)
                 categories.append(category)
 
-    # Encode categories as integer labels
-    unique_categories = sorted(set(categories))
-    category_to_label = {cat: idx for idx, cat in enumerate(unique_categories)}
-    labels = [category_to_label[cat] for cat in categories]
+    # Filter to top N categories (exactly N, no "OTHER")
+    category_counts = Counter(categories)
+    top_categories = [cat for cat, _ in category_counts.most_common(num_categories)]
 
-    # Split into train and test
+    # Filter data to only include samples from top N categories
+    filtered_texts = []
+    filtered_categories = []
+    for text, cat in zip(texts, categories):
+        if cat in top_categories:
+            filtered_texts.append(text)
+            filtered_categories.append(cat)
+
+    print(
+        f"Filtered dataset from {len(texts)} to {len(filtered_texts)} samples (keeping only top {num_categories} categories)"
+    )
+    print(f"Top {num_categories} categories: {top_categories}")
+
+    # Encode categories as integer labels (0 to num_categories-1)
+    category_to_label = {cat: idx for idx, cat in enumerate(sorted(top_categories))}
+    labels = [category_to_label[cat] for cat in filtered_categories]
+
+    # Split into train, validation, and test
     random.seed(seed)
-    indices = list(range(len(texts)))
+    indices = list(range(len(filtered_texts)))
     random.shuffle(indices)
 
-    split_idx = int(len(indices) * (1 - test_split))
-    train_indices = indices[:split_idx]
-    test_indices = indices[split_idx:]
+    train_end = int(len(indices) * train_split)
+    val_end = train_end + int(len(indices) * val_split)
 
-    train_texts = [texts[i] for i in train_indices]
+    train_indices = indices[:train_end]
+    val_indices = indices[train_end:val_end]
+    test_indices = indices[val_end:]
+
+    train_texts = [filtered_texts[i] for i in train_indices]
     train_labels = [labels[i] for i in train_indices]
-    test_texts = [texts[i] for i in test_indices]
+    val_texts = [filtered_texts[i] for i in val_indices]
+    val_labels = [labels[i] for i in val_indices]
+    test_texts = [filtered_texts[i] for i in test_indices]
     test_labels = [labels[i] for i in test_indices]
 
     # Save processed data
     with open(processed_dir / "train_texts.json", "w", encoding="utf-8") as f:
         json.dump(train_texts, f, ensure_ascii=False)
     torch.save(torch.tensor(train_labels, dtype=torch.long), processed_dir / "train_labels.pt")
+
+    with open(processed_dir / "val_texts.json", "w", encoding="utf-8") as f:
+        json.dump(val_texts, f, ensure_ascii=False)
+    torch.save(torch.tensor(val_labels, dtype=torch.long), processed_dir / "val_labels.pt")
 
     with open(processed_dir / "test_texts.json", "w", encoding="utf-8") as f:
         json.dump(test_texts, f, ensure_ascii=False)
@@ -101,8 +141,9 @@ def preprocess_data(
 
     print(f"Processed data saved to {processed_dir}")
     print(f"Training set size: {len(train_texts)}")
+    print(f"Validation set size: {len(val_texts)}")
     print(f"Test set size: {len(test_texts)}")
-    print(f"Number of categories: {len(unique_categories)}")
+    print(f"Number of categories: {len(top_categories)}")
 
 
 class ArXivDataset(torch.utils.data.Dataset):
@@ -144,27 +185,38 @@ class ArXivDataset(torch.utils.data.Dataset):
 
 
 def arxiv_dataset(
-    bucket_name: str = "mlops_project_data_bucket1",
-    gcs_prefix: str = "data/processed",
-) -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """Return train and test datasets for ArXiv papers.
+    max_categories: int = 5,
+) -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset, torch.utils.data.Dataset]:
+    """Return train, validation, and test datasets for ArXiv papers.
 
-    Loads processed data from data/processed directory. Checks for Vertex AI mounted
-    GCS filesystem first (/gcs/), then local files, then downloads from GCS if needed.
+    Loads processed data from data/processed directory or GCS mounted filesystem.
+    Checks /gcs/ first (for Vertex AI), then falls back to local data/processed.
+
+    The data should already be filtered to max_categories during preprocessing.
+    If data has more categories than max_categories, remaps labels to top N categories.
 
     Args:
-        bucket_name: Name of the GCS bucket containing the data.
-        gcs_prefix: Prefix path in the bucket where processed data is stored.
+        max_categories: Maximum number of categories to keep (default: 5).
+                       If data has more, keeps top (max_categories-1) and maps rest to label (max_categories-1).
 
     Returns:
-        Tuple of (train_dataset, test_dataset).
+        Tuple of (train_dataset, val_dataset, test_dataset).
 
     Raises:
         FileNotFoundError: If processed data files are not found locally or in GCS.
     """
-    # Check for Vertex AI mounted GCS filesystem first
-    gcs_mount_path = Path(f"/gcs/{bucket_name}/{gcs_prefix}")
-    processed_dir = Path("data/processed")
+    # Try GCS mounted filesystem first (for Vertex AI), then local
+    # Check regional bucket first (europe-west1), then multi-region, then local
+    gcs_regional_dir = Path("/gcs/mlops_project_data_bucket1-europe-west1/data/processed")
+    gcs_processed_dir = Path("/gcs/mlops_project_data_bucket1/data/processed")
+    local_processed_dir = Path("data/processed")
+
+    if gcs_regional_dir.exists() and (gcs_regional_dir / "train_texts.json").exists():
+        processed_dir = gcs_regional_dir
+    elif gcs_processed_dir.exists() and (gcs_processed_dir / "train_texts.json").exists():
+        processed_dir = gcs_processed_dir
+    else:
+        processed_dir = local_processed_dir
 
     # Use GCS mount if available, otherwise use local directory
     if gcs_mount_path.exists() and (gcs_mount_path / "train_texts.json").exists():
@@ -215,13 +267,56 @@ def arxiv_dataset(
         train_texts = json.load(f)
     train_labels = torch.load(processed_dir / "train_labels.pt").long()
 
+    # Load validation set if it exists, otherwise create empty dataset
+    val_texts = []
+    val_labels = torch.tensor([], dtype=torch.long)
+    val_file = processed_dir / "val_texts.json"
+    if val_file.exists():
+        with open(val_file, "r", encoding="utf-8") as f:
+            val_texts = json.load(f)
+        val_labels = torch.load(processed_dir / "val_labels.pt").long()
+
     with open(processed_dir / "test_texts.json", "r", encoding="utf-8") as f:
         test_texts = json.load(f)
     test_labels = torch.load(processed_dir / "test_labels.pt").long()
 
+    # Remap labels if we have more categories than max_categories
+    all_labels = torch.cat([train_labels, test_labels])
+    if len(val_labels) > 0:
+        all_labels = torch.cat([all_labels, val_labels])
+    unique_labels = torch.unique(all_labels)
+
+    if len(unique_labels) > max_categories:
+        # Count label frequencies in training set
+        label_counts = Counter(train_labels.tolist())
+        # Get top (max_categories-1) most frequent labels (returns list of (label, count) tuples)
+        top_label_counts = label_counts.most_common(max_categories - 1)
+        top_labels = [label for label, _ in top_label_counts]
+        # Create mapping: top labels map to 0..(max_categories-2), others map to max_categories-1
+        label_remap = {old_label: new_idx for new_idx, old_label in enumerate(top_labels)}
+        other_label = max_categories - 1
+
+        def remap_labels(labels: torch.Tensor) -> torch.Tensor:
+            remapped = torch.zeros_like(labels)
+            for old_label in unique_labels:
+                old_val = old_label.item()
+                new_label = label_remap.get(old_val, other_label)
+                remapped[labels == old_label] = new_label
+            return remapped.long()
+
+        train_labels = remap_labels(train_labels)
+        if len(val_labels) > 0:
+            val_labels = remap_labels(val_labels)
+        test_labels = remap_labels(test_labels)
+
     train_set = ArXivDataset(train_texts, train_labels)
+    val_set = (
+        ArXivDataset(val_texts, val_labels)
+        if len(val_texts) > 0
+        else ArXivDataset([], torch.tensor([], dtype=torch.long))
+    )
     test_set = ArXivDataset(test_texts, test_labels)
-    return train_set, test_set
+    return train_set, val_set, test_set
 
 
 if __name__ == "__main__":

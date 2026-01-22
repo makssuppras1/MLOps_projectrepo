@@ -1,0 +1,19 @@
+# TF-IDF + XGBoost model configuration
+# Optimized for accuracy while remaining fast
+# Memory-optimized: Reduced features/ngrams to fit in 32GB RAM
+model:
+  num_labels: 5
+  max_features: 15000  # Reduced from 20000 to save memory (still plenty for good accuracy)
+  stop_words: "english"
+  ngram_range_min: 1  # Minimum n-gram size
+  ngram_range_max: 2  # Reduced from 3 to 2 (unigrams + bigrams only) to save memory
+  min_df: 2  # Increased from 1 to reduce feature count slightly
+  max_df: 0.9  # Slightly lower max_df to filter out very common words
+  max_depth: 10  # Deeper trees for better feature interactions
+  learning_rate: 0.1  # Higher LR for faster convergence (early stopping will prevent overfitting)
+  n_estimators: 500  # More boosting rounds (early stopping will stop early if needed)
+  subsample: 0.85  # Row subsampling (prevents overfitting)
+  colsample_bytree: 0.85  # Column subsampling (prevents overfitting)
+  reg_alpha: 0.05  # Reduced L1 regularization (less aggressive)
+  reg_lambda: 0.5  # Reduced L2 regularization (less aggressive)
+  early_stopping_rounds: 20  # Stop if no improvement for 20 rounds

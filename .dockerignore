@@ -1,0 +1,70 @@
+# Data directories (data comes from GCS)
+data/
+*.csv
+*.json
+*.pt
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Git
+.git/
+.gitignore
+.dvc/
+.dvcignore
+
+# Outputs and models (generated at runtime)
+outputs/
+trained_model.pt
+models/
+*.pth
+*.ckpt
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Documentation and reports
+docs/
+reports/
+*.md
+!README.md
+
+# Tests
+tests/
+*.test
+
+# Notebooks
+notebooks/
+*.ipynb
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+
+# Other
+.DS_Store
+*.tmp
+.cache/

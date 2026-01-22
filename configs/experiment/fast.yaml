@@ -1,0 +1,14 @@
+# Fast training experiment - minimal configuration for pipeline validation
+# Use with: experiment=fast
+# AGGRESSIVELY simplified for maximum speed and minimal resource usage
+# @package _global_
+training:
+  seed: 42
+  batch_size: 128  # Increased for faster training (fewer iterations)
+  epochs: 1  # Single epoch - exactly 1 epoch as required
+  max_length: 32  # Very short sequences for fast tokenization and processing
+  num_workers: 0  # No parallel workers to reduce overhead
+  max_samples: 2000  # Exactly 2,000 papers as required
+  max_steps: null  # Remove step limit to allow full epoch
+  max_runtime_hours: 0.5  # Strict 30-minute limit
+  log_interval: 10  # Less frequent logging

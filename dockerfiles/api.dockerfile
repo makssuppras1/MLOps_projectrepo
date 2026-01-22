@@ -11,6 +11,7 @@ COPY uv.lock uv.lock
 COPY pyproject.toml pyproject.toml
 COPY README.md README.md
 COPY src/ src/
+COPY app/ app/
 COPY data/ data/
 COPY configs/ configs/
 
@@ -25,4 +26,4 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-cache --no-i
 EXPOSE 8000
 
 # Entrypoint for API server
-ENTRYPOINT ["uv", "run", "src/pname/api.py", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

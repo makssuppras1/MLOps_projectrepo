@@ -1,0 +1,23 @@
+# 2-hour training experiment - maximum quality with full training time
+# Use with: experiment=2hour
+# Trains for up to 2 hours to maximize model quality
+#
+# MODEL SAVE LOCATION:
+# - On Vertex AI: Model saves to AIP_MODEL_DIR/trained_model.pt
+#   AIP_MODEL_DIR is set by Vertex AI based on baseOutputDirectory in vertex_ai_config_2hour.yaml
+#   Final location: gs://mlops_project_data_bucket1-europe-west1/experiments/2hour/trained_model.pt
+# - Locally: Model saves to outputs/trained_model.pt
+# @package _global_
+training:
+  seed: 42
+  batch_size: 64  # Moderate batch size for stable gradients over long training
+  epochs: 100  # High epoch limit - will stop at 2 hours instead
+  max_length: 256  # Full sequence length for better context capture
+  num_workers: 0  # No parallel workers to reduce overhead
+  max_samples: null  # Use full dataset for maximum quality
+  max_steps: null  # No step limit - train until time limit
+  max_runtime_hours: 2.0  # Train for exactly 2 hours
+  log_interval: 50  # Less frequent logging for long training
+  optimizer:
+    lr: 2e-5  # Lower learning rate for fine-tuning (standard for BERT/DistilBERT)
+    # Adam default betas (0.9, 0.999) are optimal for long training

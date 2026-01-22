@@ -1,0 +1,6 @@
+# Training hyperparameters for TF-IDF + XGBoost
+# Simplified defaults - most settings don't apply to TF-IDF/XGBoost
+training:
+  seed: 42  # Random seed for reproducibility
+  max_samples: null  # Use full dataset by default (can be overridden by experiment config)
+  figure_save_path: "reports/figures/confusion_matrix_tfidf.png"

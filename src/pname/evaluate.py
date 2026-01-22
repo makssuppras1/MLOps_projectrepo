@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 import typer
 from loguru import logger
-from transformers import DistilBertTokenizer
+from transformers import AutoTokenizer
 
 from pname.data import arxiv_dataset
 from pname.model import MyAwesomeModel
@@ -12,7 +12,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 
 
 def collate_fn_eval(
-    batch: list[Tuple[str, torch.Tensor]], tokenizer: DistilBertTokenizer, max_length: int = 512
+    batch: list[Tuple[str, torch.Tensor]], tokenizer, max_length: int = 512
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collate function to tokenize text batches for evaluation.
 
@@ -45,6 +45,7 @@ def evaluate(
     model_name: str = typer.Option("distilbert-base-uncased", help="Pretrained model name"),
     batch_size: int = typer.Option(32, help="Batch size for evaluation"),
     max_length: int = typer.Option(512, help="Maximum sequence length"),
+    max_samples: int = typer.Option(None, help="Maximum number of samples to evaluate (None = all)"),
 ) -> None:
     """Evaluate a trained model on the test set.
 
@@ -57,10 +58,10 @@ def evaluate(
     logger.info("Evaluating like my life depended on it")
     logger.info(f"Loading model from: {model_checkpoint}")
 
-    # Initialize tokenizer
-    tokenizer = DistilBertTokenizer.from_pretrained(model_name)
+    # Initialize tokenizer (AutoTokenizer works with DistilBERT, TinyBERT, BERT, etc.)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    # Load model with default config (will be overridden by checkpoint if it contains config)
+    # Load model with default config (5 labels for ultra-fast training)
     model = MyAwesomeModel().to(DEVICE)
 
     # Load model checkpoint, mapping to CPU first to handle cross-platform compatibility
@@ -68,7 +69,19 @@ def evaluate(
     model.load_state_dict(checkpoint)
     logger.info("Model loaded successfully")
 
-    _, test_set = arxiv_dataset()
+    # Use same category reduction as training (5 categories)
+    _, _, test_set = arxiv_dataset(max_categories=model.num_labels)
+
+    # Optionally use a subset for faster evaluation
+    if max_samples is not None and max_samples < len(test_set):
+        import random
+
+        random.seed(42)  # For reproducibility
+        indices = random.sample(range(len(test_set)), max_samples)
+        test_set = torch.utils.data.Subset(test_set, indices)
+        logger.info(f"Using subset of {max_samples} samples for evaluation")
+    elif max_samples is not None:
+        logger.info(f"max_samples ({max_samples}) >= dataset size ({len(test_set)}), using full dataset")
 
     def collate(batch):
         return collate_fn_eval(batch, tokenizer, max_length)
@@ -77,6 +90,7 @@ def evaluate(
         test_set,
         batch_size=batch_size,
         collate_fn=collate,
+        num_workers=0,  # Set to 0 to avoid pickling issues with tokenizer
     )
     logger.info(f"Test dataset size: {len(test_set)}")
 

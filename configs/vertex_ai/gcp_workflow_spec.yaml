@@ -1,0 +1,165 @@
+meta:
+  name: dtu-mlops-cloud-usage
+  scope: google-cloud-platform
+  intent: provision_compute_storage_build_and_training_resources
+  priority: cost-aware
+  assumptions:
+    - gcloud_cli_installed
+    - user_authenticated
+    - gcp_project_selected
+
+global_rules:
+  - always_prefer_cli_over_console_for_reproducibility
+  - stop_or_delete_resources_when_not_in_use
+  - verify_each_step_before_proceeding
+  - never_expose_secrets_in_plaintext
+  - commit_configuration_changes_to_version_control
+
+phases:
+
+  - phase: authentication_and_context
+    objective: ensure_correct_gcp_context
+    steps:
+      - action: verify_gcloud_auth
+        command: gcloud auth list
+        success_criteria: active_account_present
+
+      - action: verify_project
+        command: gcloud config get-value project
+        success_criteria: project_id_not_empty
+
+  - phase: compute_engine_setup
+    objective: create_and_manage_vm_instances
+    steps:
+      - action: create_vm_instance
+        parameters:
+          name: vm-name
+          region: appropriate_region
+          machine_type: cost_appropriate_type
+          image: default_or_container_optimized
+        success_criteria: vm_visible_in_compute_engine
+
+      - action: list_instances
+        command: gcloud compute instances list
+        success_criteria: instance_name_present
+
+      - action: ssh_into_vm
+        command: gcloud compute ssh vm-name
+        success_criteria: shell_access_granted
+
+      - action: verify_software
+        checks:
+          - python --version
+          - python -c "import torch"
+        success_criteria: all_checks_pass
+
+  - phase: deep_learning_containers
+    objective: use_prebuilt_framework_images
+    steps:
+      - action: list_dl_images
+        command: >
+          gcloud container images list
+          --repository=gcr.io/deeplearning-platform-release
+        success_criteria: image_list_returned
+
+      - action: launch_vm_with_container
+        parameters:
+          framework: pytorch
+        success_criteria: pytorch_import_successful
+
+  - phase: resource_cost_control
+    objective: prevent_unnecessary_charges
+    rules:
+      - if vm_idle: stop_vm
+    steps:
+      - action: stop_vm
+        command: gcloud compute instances stop vm-name
+        success_criteria: vm_status_stopped
+
+  - phase: cloud_storage_and_dvc
+    objective: remote_versioned_data_management
+    steps:
+      - action: create_bucket
+        parameters:
+          versioning: enabled
+        success_criteria: bucket_exists
+
+      - action: configure_dvc_remote
+        parameters:
+          backend: gcs
+          bucket_name: created_bucket
+        success_criteria: dvc_remote_configured
+
+      - action: commit_dvc_config
+        requirement: git_commit_required
+
+      - action: push_data
+        command: dvc push --no-run-cache
+        success_criteria: data_uploaded
+
+      - action: pull_data
+        command: dvc pull --no-run-cache
+        success_criteria: data_restored
+
+  - phase: artifact_registry_and_cloud_build
+    objective: container_build_and_storage
+    steps:
+      - action: enable_apis
+        apis:
+          - artifactregistry.googleapis.com
+          - cloudbuild.googleapis.com
+        success_criteria: apis_enabled
+
+      - action: create_artifact_registry
+        parameters:
+          format: docker
+        success_criteria: repository_created
+
+      - action: write_cloudbuild_config
+        file: cloudbuild.yaml
+        success_criteria: config_valid
+
+      - action: submit_build
+        command: gcloud builds submit
+        success_criteria: build_successful
+
+  - phase: model_training
+    objective: execute_training_jobs
+    steps:
+      - action: prepare_training_environment
+        checks:
+          - pytorch_available
+          - data_accessible
+        success_criteria: environment_ready
+
+      - action: run_training
+        location: compute_engine_or_vertex_ai
+        success_criteria: training_completes_without_error
+
+  - phase: secrets_management
+    objective: secure_sensitive_information
+    steps:
+      - action: create_secret
+        service: secret_manager
+        success_criteria: secret_exists
+
+      - action: inject_secret_into_build
+        method: secretEnv
+        success_criteria: secret_available_at_runtime
+
+      - action: verify_no_secret_leakage
+        rule: secrets_must_not_appear_in_logs
+
+  - phase: verification_and_cleanup
+    objective: validate_and_finalize
+    steps:
+      - action: verify_resources
+        checks:
+          - vm_state_correct
+          - storage_accessible
+          - images_available
+        success_criteria: all_checks_pass
+
+      - action: cleanup_unused_resources
+        rule: delete_or_stop_all_nonessential_resources
+        success_criteria: no_idle_billable_resources
