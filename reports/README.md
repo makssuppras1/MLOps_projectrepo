@@ -315,7 +315,12 @@ In truth it might have been overkill to do data version control for this specifi
 >
 > Answer:
 
---- question 12 fill here ---
+We used **Hydra** for configuration management with hierarchical YAML config files. The main `config.yaml`(configs/config.yaml) loads default configurations for model, training, and experiments. Specific experiments are defined in *configs/experiment/* folder (`fast.yaml`, `balanced.yaml`, `optimized_distilbert.yaml`, etc.). Each experiment overrides base training parameters like batch_size, epochs, max_samples, and learning rates.
+
+**Example**: To run the fast experiment configuration:
+```bash
+uv run src/pname/train.py experiment=fast
+```
 
 ### Question 13
 
