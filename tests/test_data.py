@@ -40,7 +40,9 @@ class TestPreprocessData:
             csv_path.write_text(csv_data)
 
             # Run preprocessing
-            preprocess_data(str(raw_path), str(processed_dir), test_split=0.25, seed=42)
+            preprocess_data(
+                str(raw_path), str(processed_dir), train_split=0.75, val_split=0.0, test_split=0.25, seed=42
+            )
 
             # Check that all expected files exist
             processed_path = Path(processed_dir)
@@ -64,7 +66,7 @@ class TestPreprocessData:
 
             csv_path.write_text(csv_data)
 
-            preprocess_data(str(raw_path), str(processed_dir), test_split=0.2, seed=42)
+            preprocess_data(str(raw_path), str(processed_dir), train_split=0.8, val_split=0.0, test_split=0.2, seed=42)
 
             processed_path = Path(processed_dir)
             train_labels = torch.load(processed_path / "train_labels.pt")
@@ -87,7 +89,9 @@ class TestPreprocessData:
 
             csv_path.write_text(csv_data)
 
-            preprocess_data(str(raw_path), str(processed_dir), test_split=0.25, seed=42)
+            preprocess_data(
+                str(raw_path), str(processed_dir), train_split=0.75, val_split=0.0, test_split=0.25, seed=42
+            )
 
             processed_path = Path(processed_dir)
             with open(processed_path / "category_mapping.json", "r") as f:
@@ -115,8 +119,8 @@ class TestPreprocessData:
             csv_path.write_text(csv_data)
 
             # Run twice with same seed
-            preprocess_data(str(raw_path), str(processed_dir1), test_split=0.2, seed=42)
-            preprocess_data(str(raw_path), str(processed_dir2), test_split=0.2, seed=42)
+            preprocess_data(str(raw_path), str(processed_dir1), train_split=0.8, val_split=0.0, test_split=0.2, seed=42)
+            preprocess_data(str(raw_path), str(processed_dir2), train_split=0.8, val_split=0.0, test_split=0.2, seed=42)
 
             # Check that results are identical
             labels1 = torch.load(Path(processed_dir1) / "train_labels.pt")

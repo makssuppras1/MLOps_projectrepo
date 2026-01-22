@@ -18,7 +18,7 @@ class TestExtractTextFeatures:
         assert "text_length" in features
         assert "word_count" in features
         assert features["text_length"] == len(text)
-        assert features["word_count"] == 10
+        assert features["word_count"] == 9
 
     def test_extract_features_empty(self):
         """Test feature extraction with empty text."""

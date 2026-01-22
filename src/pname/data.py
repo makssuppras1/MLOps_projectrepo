@@ -10,6 +10,13 @@ import typer
 # GCS support removed - using only local and mounted paths
 
 
+def _extract_typer_default(value, default):
+    """Extract default value from typer OptionInfo if needed, otherwise return value."""
+    if isinstance(value, typer.models.OptionInfo):
+        return default
+    return value
+
+
 def preprocess_data(
     raw_dir: str = typer.Argument(..., help="Path to raw data directory"),
     processed_dir: str = typer.Argument(..., help="Path to processed data directory"),
@@ -38,6 +45,13 @@ def preprocess_data(
         FileNotFoundError: If no CSV file is found in raw_dir.
         ValueError: If train_split + val_split + test_split != 1.0.
     """
+    # Extract defaults from typer OptionInfo if called directly (not via CLI)
+    train_split = _extract_typer_default(train_split, 0.7)
+    val_split = _extract_typer_default(val_split, 0.15)
+    test_split = _extract_typer_default(test_split, 0.15)
+    seed = _extract_typer_default(seed, 42)
+    num_categories = _extract_typer_default(num_categories, 5)
+
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
 
