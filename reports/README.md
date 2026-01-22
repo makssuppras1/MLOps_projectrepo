@@ -414,7 +414,7 @@ Images are automatically built and pushed to Google Artifact Registry via Cloud 
 >
 > Answer:
 
-During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors and **unit tests** (17 tests across data, model, and training modules) to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
+During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors, and **unit tests** (17 tests across data, model, and training modules) was used to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
 
 We did implement a **profiler.py** module with PyTorch profiler integration and created a **profiling guide**, however profiling was not fully utilized. Our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
 
@@ -521,7 +521,9 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
---- question 23 fill here ---
+We did manage to write an API for our model. We used **FastAPI** to create the *"ArXiv Paper Classifier API"* located in [app/main.py](app/main.py). The API includes **four endpoints**: GET `/` (root), GET `/health` (status check), POST `/load` (model loading), and POST `/predict` (classification). We implemented **dual model support** for both PyTorch (DistilBERT) and TF-IDF + XGBoost models in the same API.
+
+We also added **structured request/response models** using Pydantic with detailed prediction responses including class probabilities, confidence scores, and class names. The API includes **error handling** with proper HTTP status codes and **automatic model discovery** on startup. We containerized it with [api.dockerfile](dockerfiles/api.dockerfile) and created **integration tests** in [test_apis.py](tests/integrationtests/test_apis.py) plus **load testing infrastructure** using Locust for performance validation.
 
 ### Question 24
 
@@ -537,7 +539,16 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
---- question 24 fill here ---
+For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) and a production [Dockerfile](Dockerfile) for cloud deployment.
+
+We have **Docker images** built and pushed to Google Artifact Registry via Cloud Build (as shown in registry and build screenshots). To invoke the service locally, a user would call:
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Quantum computing and machine learning applications"}'
+```
+
+Health checks are available at `/health` and model loading via `/load` endpoint.
 
 ### Question 25
 
