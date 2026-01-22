@@ -381,7 +381,22 @@ To reproduce an experiment one would have to: sync dependencies with `uv sync`, 
 >
 > Answer:
 
---- question 15 fill here ---
+For our project we developed three Docker images: *one for training*, *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
+
+For example to run the training docker image
+```bash
+docker run --name experiment1 --rm train:latest experiment=fast
+``` 
+The evaluation image requires volume access for model and data:
+```bash
+docker run --rm -v $(pwd)/trained_model.pt:/models/trained_model.pt evaluate:latest
+``` 
+The API image runs our inference service: 
+```bash
+docker run --rm -p 8000:8000 api:latest
+```
+
+Images are automatically built and pushed to Google Artifact Registry via Cloud Build. Link to docker file in `/dockerfiles/`: [train.dockerfile](dockerfiles/train.dockerfile)
 
 ### Question 16
 
