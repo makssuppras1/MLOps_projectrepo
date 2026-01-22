@@ -2,7 +2,6 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
 import torch
 
 from pname.data import ArXivDataset, preprocess_data
@@ -99,10 +98,13 @@ class TestPreprocessData:
             assert mapping["cs.AI"] == 0
             assert mapping["cs.LG"] == 1
 
-
     def test_preprocess_data_reproducibility(self):
         """Test that same seed produces same split."""
-        with tempfile.TemporaryDirectory() as raw_dir1, tempfile.TemporaryDirectory() as processed_dir1, tempfile.TemporaryDirectory() as processed_dir2:
+        with (
+            tempfile.TemporaryDirectory() as raw_dir1,
+            tempfile.TemporaryDirectory() as processed_dir1,
+            tempfile.TemporaryDirectory() as processed_dir2,
+        ):
             raw_path = Path(raw_dir1)
             csv_path = raw_path / "sample.csv"
 
