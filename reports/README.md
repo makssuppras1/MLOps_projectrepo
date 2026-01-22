@@ -414,7 +414,9 @@ Images are automatically built and pushed to Google Artifact Registry via Cloud 
 >
 > Answer:
 
---- question 16 fill here ---
+During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors and **unit tests** (17 tests across data, model, and training modules) to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
+
+We did implement a **profiler.py** module with PyTorch profiler integration and created a **profiling guide**, however profiling was not fully utilized. Our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
 
 ## Working in the cloud
 
