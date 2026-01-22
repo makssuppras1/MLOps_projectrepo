@@ -296,7 +296,19 @@ In truth it might have been overkill to do data version control for this specifi
 >
 > Answer:
 
---- question 11 fill here ---
+TODO describe in detail some of the important tests that we are running.
+
+The Continuous integration setup consists of 'GitHub Actions' workflows located in the tests.yaml file. The file runs when a pull requests or a push to main is made. It runs three jobs, unit testing, linting, and basic packaging checks.
+
+* **Testing**: checks out the repo, sets up uv, caches dependencies, installs project dependencies, installs a specified PyTorch version for testing, runs pytest, and then runs coverage. The test across multiple platforms (Ubuntu, MacOS and Windows) and python versions (3.12, 3.13) to ensure a minimum level of compatibility.
+
+* **Linting and formatting**: Handled in the tests.yaml file as 'jobs'. Ubuntu sets up uv and runs Ruff linting and formatting check.
+
+* **Build**: builds Docker images; the job is defined but details are in the same file.
+
+Github's Caching is utilized to store the python packages from the uv.lock file, so that subsequent runs can use the stored packages and skip the process of installing them again. This means that the first run will be relatively lengthy (a couple of minutes) as it has to install all the packages, but subsequent tests can be performed in seconds. The time saved by caching grows exponentially as the number of tests increase. 
+
+An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
 ## Running code and tracking experiments
 
