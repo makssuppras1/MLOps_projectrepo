@@ -563,7 +563,9 @@ Health checks are available at `/health` and model loading via `/load` endpoint.
 >
 > Answer:
 
---- question 25 fill here ---
+We implemented unit testing for our FastAPI application using **pytest** with **FastAPI TestClient**. We created integration tests in [test_apis.py](tests/integrationtests/test_apis.py) that cover all API endpoints: root endpoint (GET /), health endpoint (GET /health), and prediction endpoint (POST /predict) with various input scenarios including valid predictions, missing fields, wrong data types, and empty strings. The tests handle both model-loaded and model-not-loaded states (503 status codes). We validated this by running `uv run pytest tests/integrationtests/test_apis.py -v` which showed **all 6 tests passed successfully** in 4.13 seconds, confirming proper error handling, response structure, and HTTP status codes.
+
+For load testing, we implemented **Locust** testing infrastructure in [locustfile.py](tests/performancetests/locustfile.py) that simulates realistic user behavior with weighted task distribution: prediction requests (weight 5), health checks (weight 3), and root endpoint access (weight 1). We validated the complete load testing process by first starting the API server with `uv run app/main.py --host 0.0.0.0 --port 8000 &`, confirming it responded correctly with `curl http://localhost:8000/health` (returning healthy status with TF-IDF model loaded), then launching Locust with `export MYENDPOINT=http://localhost:8000 && uv run locust -f tests/performancetests/locustfile.py --host=http://localhost:8000`. The Locust web interface successfully started on http://0.0.0.0:8089, providing real-time metrics for requests per second, response times, and failure rates with configurable user count and spawn rate settings.
 
 ### Question 26
 
