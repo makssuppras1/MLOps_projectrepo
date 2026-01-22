@@ -1,0 +1,19 @@
+{
+  "functional_tests": {
+    "pytest_command": "uv run pytest tests/integrationtests/test_apis.py",
+    "passed": true,
+    "notes": "All 6 tests passed successfully. Tests cover: root endpoint (GET /), health endpoint (GET /health), valid predict requests (POST /predict), invalid predict requests (missing field, wrong type, empty string). Tests handle both cases where model is loaded and not loaded (503 status). One deprecation warning about @app.on_event - this is expected and doesn't affect functionality."
+  },
+  "load_tests": {
+    "locust_command": "uv run locust -f tests/performancetests/locustfile.py",
+    "endpoint": "Set via MYENDPOINT environment variable (e.g., export MYENDPOINT=http://localhost:8000)",
+    "ran": false,
+    "notes": "Locust file created and validated (syntax check passed). To run load tests: 1) Start API server (uv run invoke api), 2) Set MYENDPOINT env var, 3) Run locust command, 4) Open http://localhost:8089 in browser. The locustfile includes tasks for GET / (weight 1), GET /health (weight 3), and POST /predict (weight 5) to simulate realistic usage patterns."
+  },
+  "deliverables": {
+    "integration_tests": "tests/integrationtests/test_apis.py",
+    "load_tests": "tests/performancetests/locustfile.py",
+    "dependencies_added": ["httpx>=0.27.0", "locust>=2.20.0"],
+    "dependencies_file": "pyproject.toml"
+  }
+}
