@@ -60,7 +60,7 @@ will check the repositories and the code to verify your answers.
 * [x] Add a model to `model.py` and a training procedure to `train.py` and get that running (M6)
 * [x] Remember to either fill out the `requirements.txt`/`requirements_dev.txt` files or keeping your
     `pyproject.toml`/`uv.lock` up-to-date with whatever dependencies that you are using (M2+M6)
-* [ ] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
+* [x] Remember to comply with good coding practices (`pep8`) while doing the project (M7)
 * [ ] Do a bit of code typing and remember to document essential parts of your code (M7)
 * [x] Setup version control for your data or part of your data (M8)
 * [ ] Add command line interfaces and project commands to your code where it makes sense (M9)
@@ -71,7 +71,7 @@ will check the repositories and the code to verify your answers.
 * [ ] Use profiling to optimize your code (M12)
 * [x] Use logging to log important events in your code (M14)
 * [x] Use Weights & Biases to log training progress and other important metrics/artifacts in your code (M14)
-* [ ] Consider running a hyperparameter optimization sweep (M14)
+* [x] Consider running a hyperparameter optimization sweep (M14)
 * [ ] Use PyTorch-lightning (if applicable) to reduce the amount of boilerplate in your code (M15)
 
 ### Week 2
@@ -88,10 +88,10 @@ will check the repositories and the code to verify your answers.
 * [x] Create a data storage in GCP Bucket for your data and link this with your data version control setup (M21)
 * [x] Create a trigger workflow for automatically building your docker images (M21)
 * [x] Get your model training in GCP using either the Engine or Vertex AI (M21)
-* [ ] Create a FastAPI application that can do inference using your model (M22)
-* [ ] Deploy your model in GCP using either Functions or Run as the backend (M23)
-* [ ] Write API tests for your application and setup continues integration for these (M24)
-* [ ] Load test your application (M24)
+* [x] Create a FastAPI application that can do inference using your model (M22)
+* [x] Deploy your model in GCP using either Functions or Run as the backend (M23)
+* [x] Write API tests for your application and setup continues integration for these (M24)
+* [x] Load test your application (M24)
 * [ ] Create a more specialized ML-deployment API using either ONNX or BentoML, or both (M25)
 * [ ] Create a frontend for your API (M26)
 
@@ -296,7 +296,19 @@ In truth it might have been overkill to do data version control for this specifi
 >
 > Answer:
 
---- question 11 fill here ---
+TODO describe in detail some of the important tests that we are running.
+
+The Continuous integration setup consists of 'GitHub Actions' workflows located in the tests.yaml file. The file runs when a pull requests or a push to main is made. It runs three jobs, unit testing, linting, and basic packaging checks.
+
+* **Testing**: checks out the repo, sets up uv, caches dependencies, installs project dependencies, installs a specified PyTorch version for testing, runs pytest, and then runs coverage. The test across multiple platforms (Ubuntu, MacOS and Windows) and python versions (3.12, 3.13) to ensure a minimum level of compatibility.
+
+* **Linting and formatting**: Handled in the tests.yaml file as 'jobs'. Ubuntu sets up uv and runs Ruff linting and formatting check.
+
+* **Build**: builds Docker images; the job is defined but details are in the same file.
+
+Github's Caching is utilized to store the python packages from the uv.lock file, so that subsequent runs can use the stored packages and skip the process of installing them again. This means that the first run will be relatively lengthy (a couple of minutes) as it has to install all the packages, but subsequent tests can be performed in seconds. The time saved by caching grows exponentially as the number of tests increase. 
+
+An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
 ## Running code and tracking experiments
 
@@ -335,7 +347,9 @@ uv run src/pname/train.py experiment=fast
 >
 > Answer:
 
---- question 13 fill here ---
+We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (PyTorch, NumPy, CUDA) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+
+To reproduce an experiment one would have to: sync dependencies with `uv sync`, fetch versioned data with `dvc pull`, and run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
 
 ### Question 14
 
@@ -367,7 +381,22 @@ uv run src/pname/train.py experiment=fast
 >
 > Answer:
 
---- question 15 fill here ---
+For our project we developed three Docker images: *one for training*, *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
+
+For example to run the training docker image
+```bash
+docker run --name experiment1 --rm train:latest experiment=fast
+``` 
+The evaluation image requires volume access for model and data:
+```bash
+docker run --rm -v $(pwd)/trained_model.pt:/models/trained_model.pt evaluate:latest
+``` 
+The API image runs our inference service: 
+```bash
+docker run --rm -p 8000:8000 api:latest
+```
+
+Images are automatically built and pushed to Google Artifact Registry via Cloud Build. Link to docker file in `/dockerfiles/`: [train.dockerfile](dockerfiles/train.dockerfile)
 
 ### Question 16
 
