@@ -213,3 +213,10 @@ training.log
 # Vertex AI config files with secrets
 vertex_ai_example_with_env.yaml
 *_with_env.yaml
+
+# Monitoring generated files
+monitoring/reference_data.parquet
+monitoring/current_data.parquet
+monitoring/drift_report.html
+monitoring/drift_results.json
+monitoring/api_requests.csv
