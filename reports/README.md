@@ -206,7 +206,10 @@ We deviated from the template by adding several project-specific files: `tasks.p
 >
 > Answer:
 
---- question 6 fill here ---
+We used **ruff** for linting and **black + isort** for formatting, configured through pre-commit hooks in `.pre-commit-config.yaml` with 120-character lines. We also used **type annotations** for typing and **docstrings** for documentation in core modules like `preprocess_data`, `ArXivDataset`, and `MyAwesomeModel`. Documentation is maintained with **MkDocs** and operational guides (LOGGING_GUIDE, profiling_guide).
+
+In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding. 
+In general, using these rules for code quality and formatting enables faster and better understanding on code functionality without having to spend time understanding the code format.
 
 ## Version control
 
@@ -411,7 +414,9 @@ Images are automatically built and pushed to Google Artifact Registry via Cloud 
 >
 > Answer:
 
---- question 16 fill here ---
+During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors, and **unit tests** (17 tests across data, model, and training modules) was used to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
+
+We did implement a **profiler.py** module with PyTorch profiler integration and created a **profiling guide**, however profiling was not fully utilized. Our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
 
 ## Working in the cloud
 
@@ -516,7 +521,9 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
---- question 23 fill here ---
+We did manage to write an API for our model. We used **FastAPI** to create the *"ArXiv Paper Classifier API"* located in [app/main.py](app/main.py). The API includes **four endpoints**: GET `/` (root), GET `/health` (status check), POST `/load` (model loading), and POST `/predict` (classification). We implemented **dual model support** for both PyTorch (DistilBERT) and TF-IDF + XGBoost models in the same API.
+
+We also added **structured request/response models** using Pydantic with detailed prediction responses including class probabilities, confidence scores, and class names. The API includes **error handling** with proper HTTP status codes and **automatic model discovery** on startup. We containerized it with [api.dockerfile](dockerfiles/api.dockerfile) and created **integration tests** in [test_apis.py](tests/integrationtests/test_apis.py) plus **load testing infrastructure** using Locust for performance validation.
 
 ### Question 24
 
@@ -532,7 +539,16 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
---- question 24 fill here ---
+For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) and a production [Dockerfile](Dockerfile) for cloud deployment.
+
+We have **Docker images** built and pushed to Google Artifact Registry via Cloud Build (as shown in registry and build screenshots). To invoke the service locally, a user would call:
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Quantum computing and machine learning applications"}'
+```
+
+Health checks are available at `/health` and model loading via `/load` endpoint.
 
 ### Question 25
 
@@ -547,7 +563,9 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
---- question 25 fill here ---
+We implemented unit testing for our FastAPI application using **pytest** with **FastAPI TestClient**. We created integration tests in [test_apis.py](tests/integrationtests/test_apis.py) that cover all API endpoints: root endpoint (GET /), health endpoint (GET /health), and prediction endpoint (POST /predict) with various input scenarios including valid predictions, missing fields, wrong data types, and empty strings. The tests handle both model-loaded and model-not-loaded states (503 status codes). We validated this by running `uv run pytest tests/integrationtests/test_apis.py -v` which showed **all 6 tests passed successfully** in 4.13 seconds, confirming proper error handling, response structure, and HTTP status codes.
+
+For load testing, we implemented **Locust** testing infrastructure in [locustfile.py](tests/performancetests/locustfile.py) that simulates realistic user behavior with weighted task distribution: prediction requests (weight 5), health checks (weight 3), and root endpoint access (weight 1). We validated the complete load testing process by first starting the API server with `uv run app/main.py --host 0.0.0.0 --port 8000 &`, confirming it responded correctly with `curl http://localhost:8000/health` (returning healthy status with TF-IDF model loaded), then launching Locust with `export MYENDPOINT=http://localhost:8000 && uv run locust -f tests/performancetests/locustfile.py --host=http://localhost:8000`. The Locust web interface successfully started on http://0.0.0.0:8089, providing real-time metrics for requests per second, response times, and failure rates with configurable user count and spawn rate settings.
 
 ### Question 26
 
@@ -562,7 +580,9 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
---- question 26 fill here ---
+We did not manage to implement monitoring. Our current static arXiv scientific dataset would not experience data drift since it's not updated. However, if our scientific paper classification system were connected to a live arXiv API where new papers are published daily, monitoring would become critical for application longevity. We would implement monitoring using **Evidently framework** to detect **data drift** when new scientific domains emerge, writing styles evolve, or paper formats change compared to our training data. This would be particularly important as scientific fields rapidly advance and new terminology appears.
+
+For system monitoring, we would use **Prometheus metrics** to track API request patterns, classification response times, and prediction confidence distributions. We would monitor for **concept drift** where the relationship between paper content and categories shifts over time, and **target drift** where the distribution of paper categories changes (e.g., sudden increase in AI/ML papers). Alert systems would notify us when drift scores exceed thresholds, triggering model retraining workflows to maintain classification accuracy as the scientific landscape evolves. This monitoring infrastructure would ensure our paper classification system adapts to the dynamic nature of academic publishing.
 
 ## Overall discussion of project
 
