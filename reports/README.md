@@ -580,7 +580,9 @@ For load testing, we implemented **Locust** testing infrastructure in [locustfil
 >
 > Answer:
 
---- question 26 fill here ---
+We did not manage to implement monitoring. Our current static arXiv scientific dataset would not experience data drift since it's not updated. However, if our scientific paper classification system were connected to a live arXiv API where new papers are published daily, monitoring would become critical for application longevity. We would implement monitoring using **Evidently framework** to detect **data drift** when new scientific domains emerge, writing styles evolve, or paper formats change compared to our training data. This would be particularly important as scientific fields rapidly advance and new terminology appears.
+
+For system monitoring, we would use **Prometheus metrics** to track API request patterns, classification response times, and prediction confidence distributions. We would monitor for **concept drift** where the relationship between paper content and categories shifts over time, and **target drift** where the distribution of paper categories changes (e.g., sudden increase in AI/ML papers). Alert systems would notify us when drift scores exceed thresholds, triggering model retraining workflows to maintain classification accuracy as the scientific landscape evolves. This monitoring infrastructure would ensure our paper classification system adapts to the dynamic nature of academic publishing.
 
 ## Overall discussion of project
 
