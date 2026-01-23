@@ -688,7 +688,21 @@ The "something special" in our implementation is the dedicated `/monitoring` end
 >
 > Answer:
 
---- question 29 fill here ---
+This diagram shows how the project is structured from data collection all the way to deployment and monitoring. The idea is to keep each step fairly simple on its own, while still making the whole workflow reproducible and easy to reason about.
+
+![Pipeline_diagram](figures/Pipeline_diagram.png)
+
+*Everything starts in the data stage.* The raw dataset is downloaded from an external source (in this case Kaggle) and then passed through a preprocessing step. During preprocessing, the data is cleaned and transformed into a format that can be used for training. Both raw and processed data are tracked using DVC and stored in GCS, which makes it possible to reproduce experiments later and understand exactly which data version was used.
+
+*The next stage is training.* The same versioned data can be used either for local training, which is convenient during development, or for cloud training on Vertex AI when more resources or reproducibility are needed. Training produces model artifacts and metrics, which are saved and logged. Weights & Biases is used to keep track of experiments, hyperparameters, and results, making it easier to compare different runs over time.
+
+*Once changes are made to the code, the CI/CD stage takes over.* GitHub Actions runs tests and linting to catch obvious issues early. If everything passes, container images are built and pushed to an artifact registry, and the relevant services are deployed automatically. This helps reduce manual steps and keeps deployments consistent.
+
+*In the deployment stage*, the trained model is exposed through an inference API running on Cloud Run. Clients can send requests to this API and receive predictions in return.
+
+Finally, *the monitoring stage helps keep an eye on the system* after deployment. The API logs incoming requests, and these logs are used to check for data drift with tools like Evidently. Drift reports are generated and stored, which can signal when the model may need further investigation or retraining. 
+
+Overall, the pipeline is designed to be practical, reproducible, and reasonably easy to maintain.
 
 ### Question 30
 
@@ -702,7 +716,7 @@ The "something special" in our implementation is the dedicated `/monitoring` end
 >
 > Answer:
 
-By far the biggest challenge with this project was interacting with google cloud. The complications rose from having to build and upload a multiplatform docker image that the cloud would then use to run our model. Because our model requires a lot of compute to run, we had to run it on the cloud, this meant that testing and experimenting was also mostly done in the cloud. Because of this reliance on the cloud, it meant that any issues with the build/model took 2-3 minutes before an error was returned, greatly slowing down the development process. Working with a remote system that is obsqured from our own environment debugging becomes a lot more difficult since we need to know exactly how our own environment interacts with the cloud in order to pinpoint where the bugs occur. Furthermore, when an error occurs in the cloud or in the build process of the docker image, it does not return an error statement. This has made it very troublesome to do effective debugging since we don't know exactly what the cause of the error was, forcing us to do a lot of guesswork.
+By far the biggest challenge with this project was interacting with Google Cloud. The complications rose from having to build and upload a multiplatform docker image that the cloud would then use to run our model. Because our model requires a lot of compute to run, we had to run it on the cloud, this meant that testing and experimenting was also mostly done in the cloud. As a result of this reliance on the cloud, it meant that any issues with the build/model took 2-3 minutes before an error was returned, greatly slowing down the development process. Working with a remote system that is obsqured from our own environment debugging becomes a lot more difficult since we need to know exactly how our own environment interacts with the cloud in order to pinpoint where the bugs occur. Furthermore, when an error occurs in the cloud or in the build process of the docker image, it does not return an error statement. This has made it very troublesome to do effective debugging since we don't know exactly what the cause of the error was, forcing us to do a lot of guesswork.
 
 ### Question 31
 
