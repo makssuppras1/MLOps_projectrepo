@@ -178,21 +178,22 @@ Both models and training pipelines are available in our codebase, and can be sel
 
 We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to:
 
-1) Install UV package manager following the [official guide](https://docs.astral.sh/uv/getting-started/installation/),
-2) Clone the repository,
-3) Run the following command to create a virtual environment and install all main and development dependencies:
+It is assumed that a given new team memeber has a working setup with all required tools presented in this course (UV, Google cloud service, Docker, DVC)
+
+1) Clone the repository,
+2) Run the following command to create a virtual environment and install all main and development dependencies:
 ```bash
 uv sync --all-groups
 ```
-4) Since we use DVC to track large datasets without bloating the Git history, run the following to pull the data tracked by the project:
+3) Since we use DVC to track large datasets without bloating the Git history, run the following to pull the data tracked by the project:
 ```bash
 dvc pull
 ```
-5) If additional raw data needs to be fetched, execute the download script:
+4) If additional raw data needs to be fetched, execute the download script:
 ```bash
 sh scripts/download_dataset.sh
 ```
-6) We use `invoke` for project orchestration. To verify ones setup run the following:
+5) We use `invoke` for project orchestration. To verify ones setup run the following:
 ```bash
 uv run inv --list
 ```
@@ -625,9 +626,9 @@ The API supports both local testing (`localhost:8000`) and production Cloud Run 
 >
 > Answer:
 
-To ensure our API was both correct and reliable, we used a two-tiered testing approach. For unit and integration testing, we used **Pytest** and the FastAPI TestClient. We wrote six specific tests in `test_apis.py` that verify everything from basic health checks to complex edge cases, such as how the API handles empty strings or missing fields. These tests are fully automated in our GitHub Actions CI/CD pipeline, running across *Ubuntu, Windows*, and *macOS* to ensure a 70% coverage threshold is met before any code is merged.
+To ensure our API was both correct and reliable, we used a two-tiered testing approach. For unit and integration testing, we used **Pytest** and the FastAPI TestClient. We wrote integration tests in `test_apis.py` that verify the API's prediction endpoint with valid input and validate response structure. These tests are fully automated in our GitHub Actions CI/CD pipeline, running across *Ubuntu, Windows*, and *macOS* to ensure a 70% coverage threshold is met before any code is merged.
 
-For load testing, we implemented **Locust** to simulate how the server handles traffic. We designed a weighted distribution where 55% of simulated users hit the `/predict` endpoint, while the rest perform health checks.
+For load testing, we implemented **Locust** to simulate how the server handles traffic. We designed a weighted distribution where approximately 56% of simulated users hit the `/predict` endpoint (weight 5), 33% perform health checks (weight 3), and 11% hit the root endpoint (weight 1).
 
 By running Locust against our local Docker container, we confirmed the infrastructure could provide real-time metrics on response latency and failure rates. While the unit tests are automated, we currently perform load testing as a manual validation step before major deployments. This process proved that our FastAPI setup, combined with uv for fast dependency loading, can effectively manage multiple concurrent user requests without crashing.
 
