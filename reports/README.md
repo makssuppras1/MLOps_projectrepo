@@ -97,9 +97,9 @@ will check the repositories and the code to verify your answers.
 
 ### Week 3
 
-* [ ] Check how robust your model is towards data drifting (M27)
-* [ ] Setup collection of input-output data from your deployed application (M27)
-* [ ] Deploy to the cloud a drift detection API (M27)
+* [x] Check how robust your model is towards data drifting (M27)
+* [x] Setup collection of input-output data from your deployed application (M27)
+* [x] Deploy to the cloud a drift detection API (M27)
 * [ ] Instrument your API with a couple of system metrics (M28)
 * [ ] Setup cloud monitoring of your instrumented application (M28)
 * [ ] Create one or more alert systems in GCP to alert you if your app is not behaving correctly (M28)
@@ -150,9 +150,11 @@ s204634, s204614, s204598
 
 We used two main approaches for our text classification tasks on scientific papers:
 
-1. **Transformers (Hugging Face)**: We used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development and enabling us to leverage state-of-the-art contextual embeddings for classification. However it proved hard to find a sweetspot for training on the gcloud that we turned to simpler and older libraries.
+1. **Transformers (Hugging Face)**: We initally used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development. However it proved hard to find a sweetspot for training, which resulted in us favoring simpler and older libraries.
 
 2. **TF-IDF + XGBoost**: In addition to deep learning, we implemented a classical pipeline using scikit-learn's **TF-IDF** vectorizer combined with an **XGBoost** classifier. This approach embeds the documents into sparse feature vectors and then uses the gradient boosted tree model for robust classification. Training for this pipeline is handled in our repository via a dedicated script and configuration, allowing us to compare classical and transformer-based methodologies in both local and cloud environments.
+
+Additionally, we incorporated **PyArrow** for efficient data storage and retrieval in Parquet format, enabling faster I/O operations and better compression for our large dataset. **Pillow** was used for image processing tasks, particularly for handling any visual elements or converting image data when needed in our data pipeline.
 
 Both models and training pipelines are available in our codebase, and can be selected via configuration for experimentation or production use.
 
@@ -175,11 +177,25 @@ Both models and training pipelines are available in our codebase, and can be sel
 > Answer:
 
 We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to:
-1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)),
+
+1) Install UV package manager following the [official guide](https://docs.astral.sh/uv/getting-started/installation/),
 2) Clone the repository,
-3) Run `uv sync` to install all dependencies exactly as specified in the lock file,
-4) Download the data to your local repository buy running the following command in the terminal: ``uv run sh curl_arxiv-scientific-research-papers-dataset``
-5) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
+3) Run the following command to create a virtual environment and install all main and development dependencies:
+```bash
+uv sync --all-groups
+```
+4) Since we use DVC to track large datasets without bloating the Git history, run the following to pull the data tracked by the project:
+```bash
+dvc pull
+```
+5) If additional raw data needs to be fetched, execute the download script:
+```bash
+sh scripts/download_dataset.sh
+```
+6) We use `invoke` for project orchestration. To verify ones setup run the following:
+```bash
+uv run inv --list
+```
 
 ### Question 5
 
@@ -195,9 +211,11 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 >
 > Answer:
 
-From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis.
+Our project utilized the [mlops_template](https://github.com/SkafteNicki/mlops_template), keeping core structures, including the `src/`, `tests/`, and `notebooks/` directories. We filled out `src/data.py` for ArXiv preprocessing and `src/model.py` for our DistilBERT architecture.
 
-We deviated from the template by adding several project-specific files: `tasks.py` for invoke commands, guide files (`LOGGING_GUIDE.md`, `profiling_guide.md`, `config_guide.md`), a data download script (`curl_arxiv-scientific-research-papers-dataset`), and various output directories. The core template structure was maintained while adding these practical extensions for our specific MLOps workflow.
+However, we modified the projectstructure for production readiness. We replaced the traditional `requirements.txt` with a `pyproject.toml` and `uv.lock` system to leverage the UV package manager. We also removed the standard `docker/` folder in favor of a specialized `dockerfiles/` directory containing multi-stage builds for training, evaluation, and API deployment.
+
+New additions include a `monitoring/` folder for data drift detection, a `scripts/` folder for automation, and a dedicated `app/` directory for our FastAPI implementation. To handle orchestration, we added `tasks.py` file using Invoke, moving away from basic scripts. Finally, we integrated DVC (`.dvc/`) to manage data version control via Google Cloud Storage.
 
 ### Question 6
 
@@ -212,10 +230,11 @@ We deviated from the template by adding several project-specific files: `tasks.p
 >
 > Answer:
 
-We used **ruff** for linting and **black + isort** for formatting, configured through pre-commit hooks in `.pre-commit-config.yaml` with 120-character lines. We also used **type annotations** for typing and **docstrings** for documentation in core modules like `preprocess_data`, `ArXivDataset`, and `MyAwesomeModel`. Documentation is maintained with **MkDocs** and operational guides (LOGGING_GUIDE, profiling_guide).
+Throughout this project, we applied concepts to ensure quality through several automated methods. We implemented **Ruff** for linting, alongside **Black** and **isort** for formatting, all standardized to a 120-character line limit. These tools are integrated into our workflow using pre-commit hooks, ensuring that every commit is checked locally before it reaches the repository. Our GitHub Actions pipeline further automates this process, running these checks across different operating systems (*Ubuntu, Windows, macOS*) to ensure cross-platform compatibility.
 
-In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding.
-In general, using these rules for code quality and formatting enables faster and better understanding on code functionality without having to spend time understanding the code format.
+Using **MkDocs** for the `mkdocstrings` plugin was applied to automatically generate our API documentation directly from our source code.
+
+In the context of a large-scale MLOps project, these concepts are essential for collaborative scalability. Without strict formatting and linting, technical debt accumulates quickly as different contributors introduce varying styles, leading to "noisy" code reviews. Explicit typing and comprehensive documentation serve as a crucial knowledge-transfer mechanism; they transform complex scripts into a readable system. For a student project, this discipline ensures that our architectural decisions remain clear over time, preventing bugs during refactoring and making the onboarding process for new team members much more efficient.
 
 ## Version control
 
@@ -233,13 +252,8 @@ In general, using these rules for code quality and formatting enables faster and
 > *application but also ... .*
 >
 > Answer:
-I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_training) with the focus on testing the code for our data, model and train scripts.
 
-*test_data.py* focuses on the data processing/preprocessing pipeline; Validating that the ArXivDataset classes are initialized correctly, that the expected output files are created, that the train/val/tests split ratios are correct, and checks that the category-to-label mapping are created correctly for classification.
-
-*test_model.py* focuses on model architecture and behavior; Initialization, forward passes, output validation, encoder freezing, parameter counting, and gradient flow.
-
-*test_training.py* focuses on training pipeline and reproducibility; Seed reproducibility, batch collation, and training dynamics.
+In total we have implemented **18 tests** covering our core MLOps pipeline. `test_data.py` (*2 tests*) validates preprocessing creates correct output files and split ratios. `test_model.py` (*4 tests*) tests PyTorch model initialization, forward passes, encoder freezing, and gradient flow. `test_training.py` (*2 tests*) ensures reproducibility via seed setting and loss reduction. `test_tfidf_pipeline.py` (*5 tests*) validates TF-IDF+XGBoost pipeline assembly, save/load, backward compatibility, early stopping, and data leakage prevention. `test_train_tfidf_pipeline.py` (*3 tests*) tests the TF-IDF training script for artifact generation, epochs-to-estimators mapping, and validation-free training. `test_apis.py` (*1 test*) validates API prediction endpoint. And finaly `test_drift.py` (*1 test*) tests drift monitoring infrastructure.
 
 ### Question 8
 
@@ -254,9 +268,11 @@ I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_traini
 >
 > Answer:
 
-The total code coverage of our code is **48%**, covering 136 out of 285 total statements across our main modules. We are far from 100% coverage, and even if we achieved 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric showing which lines were executed during testing, but doesn't guarantee test quality or correctness. High coverage can provide false confidence if tests only verify code execution.
+The total code coverage of our code is **43%**, covering 566 out of 996 total statements across our main modules. We are pretty far away from 100% code coverage, but even if we had 100% it would still not mean that edge cases would be accounted for. Code coverage is a fine metric to see if all code is covered by some kind of test, but not a good metric to indicate if all *scenarios* are covered.
 
-Our current coverage breakdown shows: `data.py` at 61%, `model.py` at 71%, and `train.py` at 27%. This indicates good coverage of our core data processing and model functionality, but limited coverage of the training pipeline. Coverage doesn't account for edge cases, integration issues, or logical errors in test assertions themselves. Modules like API, evaluation, and visualization remain completely untested, representing areas for test suite expansion.
+Our current coverage breakdown shows: `data.py` at 47%, `model.py` at 62%, `model_tfidf.py` at 67%, `train.py` at 12%, and `train_tfidf.py` at 63%.
+
+Notice that there are two model and train coverages because of the legacy `model.py` which we were forced to abandon.
 
 ### Question 9
 
@@ -273,7 +289,6 @@ Our current coverage breakdown shows: `data.py` at 61%, `model.py` at 71%, and `
 
 We made use of both branches and pull requests (PRs) in our project. Rather than having individual branches per group member, we implemented **feature-based branches** where each branch corresponded to a specific feature or functionality being developed. This approach was chosen because we implemented co-coding practices where multiple team members could work together on the same features. We used pull requests to merge these feature branches back into the main branch, which allowed us to keep the main branch as up-to-date as possible while maintaining smaller, focused changes per PR.
 Additionally, we set up our GitHub repository to require a **minimum of 2 group members to approve a PR** before it could be merged, following the methods taught in module 17 of the course material. This workflow helped us maintain better version control by ensuring each PR contained a cohesive set of changes related to a specific feature, making code reviews more manageable and reducing conflicts during merges.
-
 
 ### Question 10
 
@@ -319,6 +334,18 @@ Github's Caching is utilized to store the python packages from the uv.lock file,
 
 An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
+**description of two critical unit tests**
+
+ 1. `test_preprocess_data_creates_output_files` from `test_data.py` \
+The purpose of this test is to validate the data preprocessing pipeline that is the foundation for all subsequent machine learning tasks. It creates a temporary directory with a csv file that contains 4 sample research papers with the columns title, abstract, and category and runs preprocess_data(). It then verifies that the following artifacts exists; train_texts.json, train_labels.pt, test_texts.json, test_labels.pt, and category_mapping.json. \
+This test is critical because our model relies on these artifacts being present in order to function.
+
+2. `test_no_data_leakage` from `test_tfidf_pipeline.py` \
+The purpose of this test is to ensure that the tf-idf model doesn't leak validation/test data into its vocab learning. \
+It creates three seperate text datasets (6 training, 1 validation, and 1 test) and trains the model. It verifies that all three datasets produce the same number of features and that the predictions work on the validations and test sets. \
+This test is critical because data leakage can skew the model and destroy its performance in production. If this tests fails then we know that the model is unreliable.
+
+
 ## Running code and tracking experiments
 
 > In the following section we are interested in learning more about the experimental setup for running your code and
@@ -336,9 +363,9 @@ An example of a triggered for our workflow can be seen [here](https://github.com
 >
 > Answer:
 
-We used **Hydra** for configuration management with hierarchical YAML config files. The main `config.yaml`(configs/config.yaml) loads default configurations for model, training, and experiments. Specific experiments are defined in *configs/experiment/* folder (`fast.yaml`, `balanced.yaml`, `optimized_distilbert.yaml`, etc.). Each experiment overrides base training parameters like batch_size, epochs, max_samples, and learning rates.
+We managed experiments using **Hydra**, employing a hierarchical YAML structure to separate logic from configuration. A central `config.yaml` defines global defaults, while specialized overrides are stored in `configs/experiment/` (e.g., `fast.yaml`, `sweep_config.yaml`). This modularity allowed us to swap entire training profiles—adjusting batch sizes or learning rates—without altering the source code.
 
-**Example**: To run the fast experiment configuration:
+To run an experiment using e.g. the "fast" configuration, we use:
 ```bash
 uv run src/pname/train.py experiment=fast
 ```
@@ -356,9 +383,14 @@ uv run src/pname/train.py experiment=fast
 >
 > Answer:
 
-We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (PyTorch, NumPy, CUDA) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens:
 
-To reproduce an experiment one would have to: sync dependencies with `uv sync`, fetch versioned data with `dvc pull`, and run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
+Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (*PyTorch, NumPy, CUDA*) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+
+To reproduce an experiment one would have to run the following in the terminal:
+1) sync dependencies with `uv sync`,
+2) fetch versioned data with `dvc pull`, and
+3) run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
 
 ### Question 14
 
@@ -375,7 +407,17 @@ To reproduce an experiment one would have to: sync dependencies with `uv sync`, 
 >
 > Answer:
 
---- question 14 fill here ---
+Since our full data set is very large and takes a long time to train, we ran a sweep in wandb with a small subset of the data (5000 articles). The purpose of this sweep was to come closer to finding and optimal set of hyperparameters that we could then train the full model on, the sweep config can be found in configs/experiment/sweep_config.yaml. The result of the sweep can be seen in the figure below.
+
+![wandb_sweep_summary](figures/wandb_sweep_summary.jpg)
+
+A rudementary inspection of the features and their repective importance can be seen in the figure below. It reveals that learning rate, subsample, and number of estimators are the most important for accuracy, with the subsample being heavy negatively correlated with accuracy.
+
+![wandb_scatterplot](figures/feature_importance.png)
+
+The best model (shown in the figure below), had the following config and is what we will be using to train our model on the full dataset. The model had a test accuracy of 0.77, which is unfortunately not very good. It is interesting to note that it is extremely poor at predicting class_4, the most likely explanation being that it never predicts class_4 and that class_4 making up 18% of the test set
+
+![wandb_scatterplot](figures/bestModel-config-and-summary.png)
 
 ### Question 15
 
@@ -390,7 +432,7 @@ To reproduce an experiment one would have to: sync dependencies with `uv sync`, 
 >
 > Answer:
 
-For our project we developed three Docker images: *one for training*, *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
+For our project we developed four Docker images: *two for training* (`train.dockerfile` & `train_tfidf.dockerfile`), *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
 
 For example to run the training docker image
 ```bash
@@ -420,9 +462,9 @@ Images are automatically built and pushed to Google Artifact Registry via Cloud 
 >
 > Answer:
 
-During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors, and **unit tests** (17 tests across data, model, and training modules) was used to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
+In this project, we a "observability" system for debugging. For "daily" debugging, we used **Loguru** for structured logging to track data flow and caught API errors using 16 custom exception handlers in FastAPI. To prevent regressions, we expanded our test suite into four specialized categories: *unit, integration, performance*, and *monitoring*. Before deploying to the cloud, we ran a `preflight_check.sh` script to catch common environment and permission issues that usually cause Vertex AI jobs to fail.
 
-We did implement a **profiler.py** module with PyTorch profiler integration and created a **profiling guide**, however profiling was not fully utilized. Our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
+Regarding performance, we developed a `profiler.py` module that integrates the PyTorch Profiler with TensorBoard. This allowed us to visualize CPU/GPU bottlenecks and memory usage through Chrome traces. While our code is functional, it is not "perfect" — the profiling results highlighted that our data-loading pipeline could be further optimized to better saturate the GPU. We also used **Locust** to simulate multiple users hitting our API, ensuring the system doesn't crash under pressure. This learning process taught us that professional MLOps is as much about monitoring and performance validation as it is about writing the model code itself. In general our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
 
 ## Working in the cloud
 
@@ -439,13 +481,15 @@ We did implement a **profiler.py** module with PyTorch profiler integration and 
 >
 > Answer:
 
-***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+***Google Cloud Storage (GCS)***: Object storage service used for DVC remote data versioning (`gs://mlops_project_data_bucket1-europe-west1`), model artifact storage, training data staging, and source code staging for Cloud Build operations.
 
-***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``.
+***Vertex AI***: Managed machine learning platform used for custom training job orchestration with automatic GCS bucket mounting at `/gcs/mlops_project_data_bucket1/`, supporting both CPU (n1-highmem-4) and GPU (n1-standard-4) machine configurations.
 
-***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
+***Artifact Registry***: Container registry service (`europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/`) used to store and distribute Docker images for training, evaluation, and API deployment with multi-platform support (ARM64/AMD64).
 
-***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
+***Cloud Build***: CI/CD service with three specialized build configurations used to automatically build platform-specific Docker images (linux/amd64 for GCP compatibility) and push them to Artifact Registry.
+
+***Secret Manager***: Secure credential management service used to inject sensitive environment variables (WANDB_API_KEY) into Vertex AI training jobs for experiment tracking integration.
 
 ### Question 18
 
@@ -460,9 +504,11 @@ We did implement a **profiler.py** module with PyTorch profiler integration and 
 >
 > Answer:
 
-For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
+We **migrated from Google Compute Engine to Vertex AI** for our cloud training infrastructure. Rather than manually managing VM instances, we use **Vertex AI Custom Training Jobs** which provide managed machine learning infrastructure with automatic resource provisioning and teardown.
 
-To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
+Our current setup uses multiple machine configurations depending on the training requirements: **n1-highmem-2** for basic CPU training, **n1-standard-4** with **NVIDIA Tesla T4 GPUs** for accelerated training, **e2-standard-4** for balanced workloads, and **e2-highmem-4** (32GB RAM) for memory-intensive TF-IDF training. To optimize costs, we utilize **preemptible instances** in fast training configurations and **SSD boot disks** (pd-ssd, 100GB) for better I/O performance.
+
+The training jobs automatically mount our GCS bucket (`gs://mlops_project_data_bucket1`) at `/gcs/mlops_project_data_bucket1/` and run our custom Docker containers from Artifact Registry. This managed approach eliminated the need for manual VM provisioning, SSH access, and infrastructure maintenance that traditional Compute Engine required.
 
 ### Question 19
 
@@ -471,7 +517,9 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![bucket_20012026](figures/bucket_20012026.png)
+![GCP_bucket1](figures/GCP_bucket1.png)
+
+![GCP_bucket2](figures/GCP_bucket2.png)
 
 ### Question 20
 
@@ -480,7 +528,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![registry_20012026](figures/registry_20012026.png)
+![GCP_artifact-registry](figures/GCP_artifact-registry.png)
 
 ### Question 21
 
@@ -489,7 +537,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![build_20012026](figures/build_20012026.png)
+![GCP_cloudbuild](figures/GCP_cloudbuild.png)
 
 ### Question 22
 
@@ -527,9 +575,11 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
-We did manage to write an API for our model. We used **FastAPI** to create the *"ArXiv Paper Classifier API"* located in [app/main.py](app/main.py). The API includes **four endpoints**: GET `/` (root), GET `/health` (status check), POST `/load` (model loading), and POST `/predict` (classification). We implemented **dual model support** for both PyTorch (DistilBERT) and TF-IDF + XGBoost models in the same API.
+We successfully built a functional API using **FastAPI**, which we organized into a dedicated `app/` folder to keep the code clean and separate from our training logic. While the API handles standard tasks like classification through a `/predict` endpoint, we added several "special" features to make it more robust for a real-world MLOps setting.
 
-We also added **structured request/response models** using Pydantic with detailed prediction responses including class probabilities, confidence scores, and class names. The API includes **error handling** with proper HTTP status codes and **automatic model discovery** on startup. We containerized it with [api.dockerfile](dockerfiles/api.dockerfile) and created **integration tests** in [test_apis.py](tests/integrationtests/test_apis.py) plus **load testing infrastructure** using Locust for performance validation.
+One of the coolest things we implemented was dual model support, allowing the same API to switch between our DistilBERT and XGBoost models. To go beyond a basic tutorial, we also built a request logging pipeline that automatically saves prediction data to Google Cloud Storage. This is a critical step for monitoring because it allows us to track how the model performs after deployment.
+
+We also focused on reliability by using **Pydantic** to strictly validate incoming data and adding a `/monitoring` endpoint that serves **Evidently AI** reports to check for data drift. The API is fully containerized and was tested using **Locust** to make sure it wouldn't crash if multiple people tried to use it at once.
 
 ### Question 24
 
@@ -545,16 +595,22 @@ We also added **structured request/response models** using Pydantic with detaile
 >
 > Answer:
 
-For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) and a production [Dockerfile](Dockerfile) for cloud deployment.
+For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) for both local and cloud deployment.
 
-We have **Docker images** built and pushed to Google Artifact Registry via Cloud Build (as shown in registry and build screenshots). To invoke the service locally, a user would call:
+Beyond basic containerization, we implemented **full Cloud Run deployment** with automated CI/CD. Our [deploy-api.yaml](.github/workflows/deploy-api.yaml) workflow automatically builds and deploys the API to Google Cloud Run when changes are pushed to main. The deployment is also available via Invoke: `uv run invoke deploy-api-to-cloud-run`.
+
+**Cloud Run service configuration**: 2Gi memory, 2 CPU cores, 0-10 auto-scaling instances in `europe-west1` region. To invoke the **production service**, users call:
 ```bash
-curl -X POST "http://localhost:8000/predict" \
+# Get service URL first
+uv run invoke get-api-url
+
+# Then invoke production endpoint (*.run.app URL)
+curl -X POST "https://arxiv-classifier-api-[hash]-[region].run.app/predict" \
   -H "Content-Type: application/json" \
   -d '{"text": "Quantum computing and machine learning applications"}'
 ```
 
-Health checks are available at `/health` and model loading via `/load` endpoint.
+The API supports both local testing (`localhost:8000`) and production Cloud Run deployment with identical endpoints.
 
 ### Question 25
 
@@ -569,9 +625,11 @@ Health checks are available at `/health` and model loading via `/load` endpoint.
 >
 > Answer:
 
-We implemented unit testing for our FastAPI application using **pytest** with **FastAPI TestClient**. We created integration tests in [test_apis.py](tests/integrationtests/test_apis.py) that cover all API endpoints: root endpoint (GET /), health endpoint (GET /health), and prediction endpoint (POST /predict) with various input scenarios including valid predictions, missing fields, wrong data types, and empty strings. The tests handle both model-loaded and model-not-loaded states (503 status codes). We validated this by running `uv run pytest tests/integrationtests/test_apis.py -v` which showed **all 6 tests passed successfully** in 4.13 seconds, confirming proper error handling, response structure, and HTTP status codes.
+To ensure our API was both correct and reliable, we used a two-tiered testing approach. For unit and integration testing, we used **Pytest** and the FastAPI TestClient. We wrote six specific tests in `test_apis.py` that verify everything from basic health checks to complex edge cases, such as how the API handles empty strings or missing fields. These tests are fully automated in our GitHub Actions CI/CD pipeline, running across *Ubuntu, Windows*, and *macOS* to ensure a 70% coverage threshold is met before any code is merged.
 
-For load testing, we implemented **Locust** testing infrastructure in [locustfile.py](tests/performancetests/locustfile.py) that simulates realistic user behavior with weighted task distribution: prediction requests (weight 5), health checks (weight 3), and root endpoint access (weight 1). We validated the complete load testing process by first starting the API server with `uv run app/main.py --host 0.0.0.0 --port 8000 &`, confirming it responded correctly with `curl http://localhost:8000/health` (returning healthy status with TF-IDF model loaded), then launching Locust with `export MYENDPOINT=http://localhost:8000 && uv run locust -f tests/performancetests/locustfile.py --host=http://localhost:8000`. The Locust web interface successfully started on http://0.0.0.0:8089, providing real-time metrics for requests per second, response times, and failure rates with configurable user count and spawn rate settings.
+For load testing, we implemented **Locust** to simulate how the server handles traffic. We designed a weighted distribution where 55% of simulated users hit the `/predict` endpoint, while the rest perform health checks.
+
+By running Locust against our local Docker container, we confirmed the infrastructure could provide real-time metrics on response latency and failure rates. While the unit tests are automated, we currently perform load testing as a manual validation step before major deployments. This process proved that our FastAPI setup, combined with uv for fast dependency loading, can effectively manage multiple concurrent user requests without crashing.
 
 ### Question 26
 
@@ -586,9 +644,11 @@ For load testing, we implemented **Locust** testing infrastructure in [locustfil
 >
 > Answer:
 
-We did not manage to implement monitoring. Our current static arXiv scientific dataset would not experience data drift since it's not updated. However, if our scientific paper classification system were connected to a live arXiv API where new papers are published daily, monitoring would become critical for application longevity. We would implement monitoring using **Evidently framework** to detect **data drift** when new scientific domains emerge, writing styles evolve, or paper formats change compared to our training data. This would be particularly important as scientific fields rapidly advance and new terminology appears.
+We successfully moved beyond a theoretical plan to implement a functional, production-ready monitoring system using the **Evidently** framework. Our approach focuses on both data drift detection and system performance tracking to ensure the longevity of our ArXiv classifier.
 
-For system monitoring, we would use **Prometheus metrics** to track API request patterns, classification response times, and prediction confidence distributions. We would monitor for **concept drift** where the relationship between paper content and categories shifts over time, and **target drift** where the distribution of paper categories changes (e.g., sudden increase in AI/ML papers). Alert systems would notify us when drift scores exceed thresholds, triggering model retraining workflows to maintain classification accuracy as the scientific landscape evolves. This monitoring infrastructure would ensure our paper classification system adapts to the dynamic nature of academic publishing.
+To make this possible, we built a production-grade logging pipeline that captures every API request—including text features, predicted classes, confidence scores, and latency — and flushes them to GCS. We then developed a `drift_monitor.py` module that compares this live data against our `reference_data.parquet` baseline.
+
+The "something special" in our implementation is the dedicated `/monitoring` endpoint in our FastAPI application. This endpoint generates and serves live Evidently HTML reports in real-time, allowing us to visualize shifts in the scientific landscape, such as the emergence of new terminology. By tracking these metrics, we can identify when the model's environment has changed enough to require a retraining workflow, ensuring our classification remains accurate even as academic publishing evolves.
 
 ## Overall discussion of project
 
@@ -607,7 +667,12 @@ For system monitoring, we would use **Prometheus metrics** to track API request 
 >
 > Answer:
 
---- question 27 fill here ---
+All project GCP activites was performed on the GCP project groupe member s204634 created on Google Cloud and members s204598 and s204614 was then added as co-owners of the project to ensure full accessibility and control of the project in the cloud.
+Of the 50$ credidt awarded trough the course, 33% of them have been used at the end of the project (not counting the last project day), resulting in a cost of 11.67$ used on GCP services. 
+
+Looking at the forcasted cost, Google Cloud predicts a accumulated cost for January to be 26.74$, based on the current ussage for the prior perioed, amounting to 53.48% of the credits awarded. This increase in expected cost is due to the increase of services used in the later stages of the project.
+
+For us the service which proved the most exspensive was the *Compute Engine*, however, after migrating to *Vertex AI*, this service has sicnificantly taken over the cost of the later usage, but only scores as the second larges expens post.
 
 ### Question 28
 
@@ -640,7 +705,21 @@ For system monitoring, we would use **Prometheus metrics** to track API request 
 >
 > Answer:
 
---- question 29 fill here ---
+This diagram shows how the project is structured from data collection all the way to deployment and monitoring. The idea is to keep each step fairly simple on its own, while still making the whole workflow reproducible and easy to reason about.
+
+![Pipeline_diagram](figures/Pipeline_diagram.png)
+
+*Everything starts in the data stage.* The raw dataset is downloaded from an external source (in this case Kaggle) and then passed through a preprocessing step. During preprocessing, the data is cleaned and transformed into a format that can be used for training. Both raw and processed data are tracked using DVC and stored in GCS, which makes it possible to reproduce experiments later and understand exactly which data version was used.
+
+*The next stage is training.* The same versioned data can be used either for local training, which is convenient during development, or for cloud training on Vertex AI when more resources or reproducibility are needed. Training produces model artifacts and metrics, which are saved and logged. Weights & Biases is used to keep track of experiments, hyperparameters, and results, making it easier to compare different runs over time.
+
+*Once changes are made to the code, the CI/CD stage takes over.* GitHub Actions runs tests and linting to catch obvious issues early. If everything passes, container images are built and pushed to an artifact registry, and the relevant services are deployed automatically. This helps reduce manual steps and keeps deployments consistent.
+
+*In the deployment stage*, the trained model is exposed through an inference API running on Cloud Run. Clients can send requests to this API and receive predictions in return.
+
+Finally, *the monitoring stage helps keep an eye on the system* after deployment. The API logs incoming requests, and these logs are used to check for data drift with tools like Evidently. Drift reports are generated and stored, which can signal when the model may need further investigation or retraining. 
+
+Overall, the pipeline is designed to be practical, reproducible, and reasonably easy to maintain.
 
 ### Question 30
 
@@ -654,7 +733,7 @@ For system monitoring, we would use **Prometheus metrics** to track API request 
 >
 > Answer:
 
---- question 30 fill here ---
+By far the biggest challenge with this project was interacting with Google Cloud. The complications rose from having to build and upload a multiplatform docker image that the cloud would then use to run our model. Because our model requires a lot of compute to run, we had to run it on the cloud, this meant that testing and experimenting was also mostly done in the cloud. As a result of this reliance on the cloud, it meant that any issues with the build/model took 2-3 minutes before an error was returned, greatly slowing down the development process. Working with a remote system that is obsqured from our own environment debugging becomes a lot more difficult since we need to know exactly how our own environment interacts with the cloud in order to pinpoint where the bugs occur. Furthermore, when an error occurs in the cloud or in the build process of the docker image, it does not return an error statement. This has made it very troublesome to do effective debugging since we don't know exactly what the cause of the error was, forcing us to do a lot of guesswork.
 
 ### Question 31
 

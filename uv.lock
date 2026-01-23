@@ -3222,7 +3222,7 @@ requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "dvc", specifier = ">=3.66.1" },
     { name = "dvc-gs", specifier = ">=3.0.0" },
-    { name = "evidently", specifier = ">=0.4.0" },
+    { name = "evidently", specifier = "==0.7.20" },
     { name = "fastapi", specifier = "==0.115.6" },
     { name = "gdown", specifier = ">=5.2.0" },
     { name = "google-cloud-secret-manager", specifier = ">=2.20.0" },

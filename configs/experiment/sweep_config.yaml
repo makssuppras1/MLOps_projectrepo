@@ -1,0 +1,79 @@
+command:
+- ${env}
+- python
+- ${program}
+- ${args_no_hyphens}
+early_terminate:
+  eta: 2
+  min_iter: 3
+  s: 2
+  type: hyperband
+max_runs: 1
+method: bayes
+metric:
+  goal: maximize
+  name: val/accuracy
+parameters:
+  model.colsample_bytree:
+    distribution: uniform
+    max: 1
+    min: 0.7
+  model.early_stopping_rounds:
+    values:
+    - 10
+    - 20
+    - 30
+  model.learning_rate:
+    distribution: log_uniform_values
+    max: 0.3
+    min: 0.01
+  model.max_depth:
+    values:
+    - 6
+    - 8
+    - 10
+    - 12
+  model.max_df:
+    distribution: uniform
+    max: 0.95
+    min: 0.7
+  model.max_features:
+    values:
+    - 10000
+    - 15000
+    - 20000
+    - 25000
+  model.min_df:
+    values:
+    - 2
+    - 3
+    - 5
+  model.n_estimators:
+    values:
+    - 300
+    - 500
+    - 700
+    - 1000
+  model.ngram_range_max:
+    values:
+    - 1
+    - 2
+    - 3
+  model.ngram_range_min:
+    values:
+    - 1
+  model.reg_alpha:
+    distribution: log_uniform_values
+    max: 0.1
+    min: 0.001
+  model.reg_lambda:
+    distribution: log_uniform_values
+    max: 2
+    min: 0.1
+  model.subsample:
+    distribution: uniform
+    max: 1
+    min: 0.7
+  training.seed:
+    value: 42
+program: src/pname/train_tfidf.py

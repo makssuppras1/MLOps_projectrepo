@@ -42,7 +42,7 @@ dependencies = [
     "wandb>=0.16.0",
     "scikit-learn>=1.8.0",  # Already included, but explicit for TF-IDF
     "xgboost>=2.0.0",  # XGBoost for gradient boosting
-    "evidently>=0.4.0",  # Data drift monitoring
+    "evidently==0.7.20",  # Data drift monitoring compatible with Python 3.12
     "pandas>=2.0.0",  # Required by Evidently
     "pyarrow>=10.0.0",  # For parquet support
     "dvc>=3.66.1",
@@ -104,6 +104,7 @@ omit = [
     "src/pname/metrics.py",
     "src/pname/profiler.py",
     "src/pname/visualize.py",
+    "src/pname/visualize_features.py",
     "tests/*",
     "*/__pycache__/*",
     "*/site-packages/*",
