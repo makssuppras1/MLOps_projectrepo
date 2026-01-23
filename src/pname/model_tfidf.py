@@ -129,6 +129,17 @@ class TFIDFXGBoostModel:
             n_estimators = self.classifier.get_params().get("n_estimators", 100)
             early_stopping_rounds = self.model_cfg.get("early_stopping_rounds", 20)
 
+            # CRITICAL: XGBoost requires minimum n_estimators for stable operation
+            # Very small values (1-2) can cause crashes, especially with validation sets
+            # Use at least 10 for reliable operation
+            MIN_ESTIMATORS = 10
+            if n_estimators < MIN_ESTIMATORS:
+                logger.warning(
+                    f"n_estimators ({n_estimators}) < {MIN_ESTIMATORS}. Increasing to {MIN_ESTIMATORS} for stability."
+                )
+                n_estimators = MIN_ESTIMATORS
+                self.classifier.set_params(n_estimators=MIN_ESTIMATORS)
+
             # CRITICAL: If n_estimators is too small, disable early stopping or adjust it
             if n_estimators <= early_stopping_rounds:
                 logger.warning(
@@ -195,11 +206,24 @@ class TFIDFXGBoostModel:
                     )
                 else:
                     # No early stopping, train normally
-                    self.classifier.fit(
-                        X,
-                        labels,
-                        verbose=True,  # Show progress (prints to stderr)
-                    )
+                    logger.info("About to call XGBoost fit() without eval_set...")
+                    sys.stdout.flush()
+                    sys.stderr.flush()
+                    try:
+                        self.classifier.fit(
+                            X,
+                            labels,
+                            verbose=True,  # Show progress (prints to stderr)
+                        )
+                        logger.info("XGBoost fit() call completed successfully")
+                    except Exception as fit_error:
+                        logger.error(f"XGBoost fit() raised exception: {fit_error}")
+                        import traceback
+
+                        logger.error(traceback.format_exc())
+                        sys.stdout.flush()
+                        sys.stderr.flush()
+                        raise
 
                 # Force flush after fit
                 sys.stdout.flush()
@@ -239,9 +263,22 @@ class TFIDFXGBoostModel:
             # Train without early stopping - disable early stopping if it was set
             if self.classifier.get_params().get("early_stopping_rounds") is not None:
                 self.classifier.set_params(early_stopping_rounds=None)
+
+            # CRITICAL: XGBoost requires minimum n_estimators for stable operation
+            # Very small values (1-2) can cause crashes
+            # Use at least 10 for reliable operation
+            n_estimators = self.classifier.get_params().get("n_estimators", 100)
+            MIN_ESTIMATORS = 10
+            if n_estimators < MIN_ESTIMATORS:
+                logger.warning(
+                    f"n_estimators ({n_estimators}) < {MIN_ESTIMATORS}. Increasing to {MIN_ESTIMATORS} for stability."
+                )
+                n_estimators = MIN_ESTIMATORS
+                self.classifier.set_params(n_estimators=MIN_ESTIMATORS)
+
             logger.info(f"Starting XGBoost training with {X.shape[0]} samples and {X.shape[1]} features...")
             logger.info(
-                f"XGBoost parameters: n_estimators={self.classifier.get_params().get('n_estimators')}, max_depth={self.classifier.get_params().get('max_depth')}"
+                f"XGBoost parameters: n_estimators={n_estimators}, max_depth={self.classifier.get_params().get('max_depth')}"
             )
             # Force flush logs before potentially long-running operation
             import sys
@@ -262,10 +299,21 @@ class TFIDFXGBoostModel:
                 fit_start = time.time()
                 logger.info("Calling XGBoost fit()...")
                 logger.info(f"XGBoost n_jobs: {self.classifier.get_params().get('n_jobs')}")
-                logger.info(f"XGBoost n_estimators: {self.classifier.get_params().get('n_estimators')}")
+                logger.info(f"XGBoost n_estimators: {n_estimators}")
+                logger.info("About to call XGBoost fit() without validation set...")
                 sys.stdout.flush()
                 sys.stderr.flush()
-                self.classifier.fit(X, labels, verbose=True)  # Show progress
+                try:
+                    self.classifier.fit(X, labels, verbose=True)  # Show progress
+                    logger.info("XGBoost fit() call completed successfully")
+                except Exception as fit_error:
+                    logger.error(f"XGBoost fit() raised exception: {fit_error}")
+                    import traceback
+
+                    logger.error(traceback.format_exc())
+                    sys.stdout.flush()
+                    sys.stderr.flush()
+                    raise
                 # Force flush after fit
                 sys.stdout.flush()
                 sys.stderr.flush()

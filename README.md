@@ -16,27 +16,88 @@ We will start with the [arXiv Scientific Research Papers Dataset](https://www.ka
 
 **Setup DVC (First Time):**
 ```bash
+# Install dependencies (including DVC and dvc-gs for GCS support)
+uv sync
+
 # Initialize DVC (if not already done)
-dvc init
+uv run dvc init
 # Configure remote storage (GCS)
-dvc remote add -d myremote gs://mlops_project_data_bucket1-europe-west1
+uv run dvc remote add -d myremote gs://mlops_project_data_bucket1-europe-west1
 ```
+
+**Note:** DVC requires the `dvc-gs` package to work with Google Cloud Storage. This is already included in `pyproject.toml` dependencies.
 
 **Track Data Files:**
 ```bash
+# First, remove old data.dvc if it exists (tracks outdated data structure)
+uv run dvc remove data.dvc 2>/dev/null || rm -f data.dvc
+
 # Track raw data
-dvc add data/raw/train_texts.json
-dvc add data/processed/train_texts.json
+uv run dvc add "data/raw/arXiv_scientific dataset.csv"
+
+# Track processed data files
+uv run dvc add data/processed/train_texts.json
+uv run dvc add data/processed/train_labels.pt
+uv run dvc add data/processed/test_texts.json
+uv run dvc add data/processed/test_labels.pt
+uv run dvc add data/processed/val_texts.json
+uv run dvc add data/processed/val_labels.pt
+uv run dvc add data/processed/category_mapping.json
+
+# Note: If you get errors about .pt files being ignored, update .dvcignore
+# to exclude model files (models/*.pt) but allow data files (data/**/*.pt)
 
 # Commit DVC metadata to Git
-git add data/raw/train_texts.json.dvc data/processed/train_texts.json.dvc .dvc/config
+git add "data/raw/arXiv_scientific dataset.csv.dvc" \
+  data/processed/train_texts.json.dvc \
+  data/processed/train_labels.pt.dvc \
+  data/processed/test_texts.json.dvc \
+  data/processed/test_labels.pt.dvc \
+  data/processed/val_texts.json.dvc \
+  data/processed/val_labels.pt.dvc \
+  data/processed/category_mapping.json.dvc \
+  .dvc/config
 git commit -m "Track data with DVC"
 ```
 
 **Push Data to GCS:**
 ```bash
-dvc push
+uv run dvc push
 ```
+
+**Troubleshooting DVC Issues:**
+
+If you encounter errors like `ERROR: could not read '...dir'` (cache corruption):
+
+```bash
+# 1. Clear corrupted DVC cache and locks
+rm -rf .dvc/cache .dvc/tmp/*
+mkdir -p .dvc/cache
+
+# 2. If you have an old data.dvc file tracking outdated data, remove it
+# (This is safe - it only removes DVC tracking, not the actual data files)
+uv run dvc remove data.dvc 2>/dev/null || rm -f data.dvc
+
+# 3. Re-add files (use uv run to access DVC)
+uv run dvc add <file>
+```
+
+If DVC is not found, ensure it's installed:
+```bash
+# Install dependencies (including DVC and dvc-gs for GCS support)
+uv sync
+
+# Use DVC via uv
+uv run dvc --version
+```
+
+If you get `ERROR: gs is supported, but requires 'dvc-gs' to be installed`:
+```bash
+# Install dvc-gs plugin for Google Cloud Storage support
+uv sync  # This will install dvc-gs from pyproject.toml
+```
+
+**Important:** Always use `uv run dvc` instead of just `dvc` to ensure you're using the project's DVC installation.
 
 **Pull Data (For Teammates - 100% Reproducibility):**
 ```bash
@@ -45,7 +106,7 @@ git clone <repo-url>
 cd MLOps_projectrepo
 
 # Pull the exact same data version used in training
-dvc pull
+uv run dvc pull
 
 # Now you have the exact same dataset version, ensuring 100% reproducibility!
 ```
@@ -487,56 +548,66 @@ The project includes multiple Dockerfiles for different purposes. You can build 
 
 #### Building Docker Images
 
+**All images are built with multi-platform support (ARM64 + AMD64) by default**, ensuring they work on any machine (ARM64 Macs, AMD64 Linux, GCP, etc.).
+
 **Using invoke (recommended):**
 
 ```bash
-# Build all Docker images (PyTorch train, TF-IDF train, and api)
+# Build multi-platform images and push to registry (works on any platform)
+uv run invoke docker-build --push --registry container-registry
+
+# Build multi-platform images without pushing (builds but not loadable locally)
 uv run invoke docker-build
+
+# Build for local use only (single platform, can be loaded)
+uv run invoke docker-build-local
 ```
 
-**Direct docker commands:**
+**Using build script:**
 
 ```bash
-# Build PyTorch training image
-docker build -f dockerfiles/train.dockerfile -t train:latest .
+# Build multi-platform images and push to registry (recommended)
+./scripts/build_docker.sh --push container-registry
 
-# Build TF-IDF training image
-docker build -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest .
+# Build multi-platform images without pushing
+./scripts/build_docker.sh
 
-# Build API image
-docker build -f dockerfiles/api.dockerfile -t api:latest .
-
-# Build evaluation image
-docker build -f dockerfiles/evaluate.dockerfile -t evaluate:latest .
+# Build for local use only (single platform, can be loaded)
+./scripts/build_docker.sh --local
 ```
 
-**⚠️ Platform-specific builds (for GCP/Vertex AI):**
-
-**Recommended: Multi-platform builds** (works on both ARM64 Mac and AMD64 GCP):
+**Direct docker buildx commands:**
 
 ```bash
-# Build for both platforms (ARM64 for local, AMD64 for GCP)
-# Docker automatically selects the native architecture when running
-docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .
-docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
-docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/api.dockerfile -t api:latest --load .
+# Multi-platform build (works on any machine - ARM64 Mac, AMD64 Linux, GCP)
+# Build and push to registry:
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile \
+  -t europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train:latest --push .
 
-# Note: --load only loads one platform. For true multi-platform, push to registry:
-# docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --push .
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train_tfidf.dockerfile \
+  -t europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/train-tfidf:latest --push .
+
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/api.dockerfile \
+  -t europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/api:latest --push .
+
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/evaluate.dockerfile \
+  -t europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/evaluate:latest --push .
+
+docker buildx build --platform linux/amd64,linux/arm64 -f monitoring_service/Dockerfile \
+  -t europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/monitoring:latest --push .
+
+# For local development (single platform, can be loaded):
+# On ARM64 Mac:
+docker buildx build --platform linux/arm64 -f dockerfiles/train.dockerfile -t train:latest . --load
+
+# On AMD64 Linux:
+docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest . --load
 ```
 
-**Alternative: Single platform builds** (faster for local testing):
-
-```bash
-# Build for native platform (ARM64 on Mac, AMD64 on Linux)
-docker buildx build --platform linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .
-docker buildx build --platform linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
-
-# Or build for AMD64 only (required for GCP deployment)
-docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest --load .
-docker buildx build --platform linux/amd64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
-docker buildx build --platform linux/amd64 -f dockerfiles/api.dockerfile -t api:latest --load .
-```
+**Important Notes:**
+- **Multi-platform images** (`linux/amd64,linux/arm64`) work on any machine but require `--push` to a registry (cannot use `--load`)
+- **Single-platform images** can use `--load` for local development but only work on that platform
+- **Default build** creates multi-platform images to ensure compatibility across all machines
 
 #### Running Docker Containers Locally
 
@@ -748,6 +819,13 @@ docker run --rm \
 
 #### Docker Troubleshooting
 
+**Common Issues:**
+
+- **Container exits with ExitCode=137** → Out of Memory (OOM). See `docs/OOM_FIX.md` for solutions.
+- **Container exits with ExitCode=139** → Platform mismatch (segfault). See `PLATFORM_FIX_SUMMARY.md` for solutions.
+- **Container can't find data** → Check mount paths and file permissions.
+- **Training hangs** → Check if it's actually running (XGBoost can be slow) or if container was killed.
+
 **Issue: Docker misinterprets path with spaces**
 
 If you see errors like `Unable to find image 'semester/02476:latest'` or `pull access denied for semester/02476`, Docker is misinterpreting your path due to spaces.
@@ -841,8 +919,20 @@ docker build -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest .
 If training starts but seems to hang after "Starting training...":
 
 ```bash
+# 0. First check if container was killed (OOM or crash)
+# Run without --rm to inspect exit status:
+docker run --name tfidf_check \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest training.epochs=1
+docker inspect tfidf_check --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}}'
+# ExitCode=137 + OOMKilled=true = Out of Memory (see OOM section above)
+# ExitCode=139 = Segfault (platform mismatch - see PLATFORM_FIX_SUMMARY.md)
+docker rm tfidf_check
+
 # 1. Check if it's actually running (XGBoost can be slow with large datasets)
 # The training might be running but not showing output. Wait a few minutes.
+# Monitor in another terminal: docker stats
 
 # 2. Use smaller dataset for testing (recommended for debugging)
 docker run --rm \
@@ -899,6 +989,42 @@ docker run --rm -v "$(pwd)/data:/data" train:latest ls /data
 docker run --rm -v "$(pwd)/data:/data" train-tfidf:latest ls /data
 ```
 
+**Issue: Container killed with ExitCode=137 (Out Of Memory)**
+
+If your container exits with `ExitCode=137` and `OOMKilled=true`, the container ran out of memory:
+
+```bash
+# Check container exit status
+docker inspect <container_name> --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}}'
+# ExitCode=137 + OOMKilled=true = Out of Memory
+
+# Solution 1: Increase Docker Desktop memory (recommended)
+# Docker Desktop → Settings → Resources → Memory → Increase to 8GB+ → Apply & Restart
+
+# Solution 2: Reduce memory usage by limiting samples
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest \
+    training.epochs=1 \
+    training.max_samples=20000  # Use 20k instead of 82k samples
+
+# Solution 3: Reduce features
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest \
+    training.epochs=1 \
+    model.max_features=5000  # Use 5k instead of 10k features
+
+# Memory requirements:
+# - 82k samples × 10k features ≈ 5-6GB RAM minimum
+# - 20k samples × 10k features ≈ 2GB RAM
+# - 20k samples × 5k features ≈ 1GB RAM
+```
+
+See `docs/OOM_FIX.md` for detailed memory troubleshooting guide.
+
 **Issue: Training fails after data loading**
 
 If training starts but fails during model training (e.g., after "Starting training..." message):
@@ -919,10 +1045,19 @@ docker run --rm \
 # Run preprocessing if data/processed/ is empty or missing files
 uv run invoke preprocess-data --download
 
-# 4. For XGBoost errors, check system dependencies (libomp on Mac)
+# 4. Check container exit status for OOM (ExitCode=137) or segfault (ExitCode=139)
+# Run without --rm to inspect after crash:
+docker run --name tfidf_debug \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest training.epochs=1
+docker inspect tfidf_debug --format 'ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}}'
+docker rm tfidf_debug
+
+# 5. For XGBoost errors, check system dependencies (libomp on Mac)
 # If you see libxgboost errors, install: brew install libomp
 
-# 5. Run with more verbose logging to see the actual error
+# 6. Run with more verbose logging to see the actual error
 docker run --rm \
   -v "$(pwd)/data:/data" \
   -v "$(pwd)/outputs:/outputs" \

@@ -46,6 +46,7 @@ dependencies = [
     "pandas>=2.0.0",  # Required by Evidently
     "pyarrow>=10.0.0",  # For parquet support
     "dvc>=3.66.1",
+    "dvc-gs>=3.0.0",  # DVC plugin for Google Cloud Storage support
 ]
 
 [dependency-groups]

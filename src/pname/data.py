@@ -152,6 +152,10 @@ def preprocess_data(
         ValueError: If train_split + val_split + test_split != 1.0.
     """
     # Extract defaults from typer OptionInfo if called directly (not via CLI)
+    # Handle None values for Arguments (they can be None when called directly)
+    raw_dir = raw_dir if raw_dir is not None else "data/raw"
+    processed_dir = processed_dir if processed_dir is not None else "data/processed"
+
     train_split = _extract_typer_default(train_split, 0.7)
     val_split = _extract_typer_default(val_split, 0.15)
     test_split = _extract_typer_default(test_split, 0.15)

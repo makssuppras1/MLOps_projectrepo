@@ -190,7 +190,6 @@ outputs/
 trained_model.pt
 models/*.pth
 models/*.pt
-/data
 
 # Training outputs and generated files
 outputs/
