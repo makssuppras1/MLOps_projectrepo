@@ -473,13 +473,15 @@ Regarding performance, we developed a `profiler.py` module that integrates the P
 >
 > Answer:
 
-***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+***Google Cloud Storage (GCS)***: Object storage service used for DVC remote data versioning (`gs://mlops_project_data_bucket1-europe-west1`), model artifact storage, training data staging, and source code staging for Cloud Build operations.
 
-***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``.
+***Vertex AI***: Managed machine learning platform used for custom training job orchestration with automatic GCS bucket mounting at `/gcs/mlops_project_data_bucket1/`, supporting both CPU (n1-highmem-4) and GPU (n1-standard-4) machine configurations.
 
-***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
+***Artifact Registry***: Container registry service (`europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/`) used to store and distribute Docker images for training, evaluation, and API deployment with multi-platform support (ARM64/AMD64).
 
-***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
+***Cloud Build***: CI/CD service with three specialized build configurations used to automatically build platform-specific Docker images (linux/amd64 for GCP compatibility) and push them to Artifact Registry.
+
+***Secret Manager***: Secure credential management service used to inject sensitive environment variables (WANDB_API_KEY) into Vertex AI training jobs for experiment tracking integration.
 
 ### Question 18
 
