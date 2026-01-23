@@ -33,24 +33,45 @@ jobs:
         uses: iterative/setup-dvc@v2
         continue-on-error: true
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+        continue-on-error: true
+
       - name: Pull data with DVC
         id: dvc-pull
+        continue-on-error: true
         run: |
           if ! dvc pull; then
-            echo "❌ DVC pull failed. This may indicate data accessibility issues."
+            echo "⚠️  DVC pull failed. This may indicate data accessibility issues."
             echo "Check that:"
             echo "  1. GCS bucket is accessible: gs://mlops_project_data_bucket1/"
             echo "  2. Service account has Storage Object Viewer permissions"
             echo "  3. DVC remote is configured: dvc remote list"
-            exit 1
+            echo "  4. GCP_SA_KEY secret is configured in GitHub repository settings"
+            echo ""
+            echo "Continuing without DVC data pull - using data already in repository if available."
+            echo "dvc_pull_success=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ DVC pull succeeded"
+            echo "dvc_pull_success=true" >> $GITHUB_OUTPUT
           fi
-          echo "✅ DVC pull succeeded"
 
       - name: Compute dataset statistics
         id: stats
         continue-on-error: true
         run: |
-          uv run python src/pname/data_stats.py --processed-dir data/processed > stats_output.txt 2>&1 || echo "Statistics computation completed with warnings"
+          # Check if processed data exists (either from DVC pull or already in repo)
+          if [ ! -d "data/processed" ] || [ -z "$(ls -A data/processed 2>/dev/null)" ]; then
+            echo "⚠️  No processed data found. Skipping statistics computation."
+            echo "Data may need to be:"
+            echo "  1. Pulled via DVC (requires GCP authentication)"
+            echo "  2. Preprocessed locally: uv run invoke preprocess-data"
+            echo "Statistics computation skipped" > stats_output.txt
+          else
+            uv run python src/pname/data_stats.py --processed-dir data/processed > stats_output.txt 2>&1 || echo "Statistics computation completed with warnings"
+          fi
           cat stats_output.txt
 
       - name: Setup CML
