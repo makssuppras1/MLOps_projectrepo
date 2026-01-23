@@ -42,6 +42,7 @@ jobs:
 
   test:
     name: "Test on ${{ matrix.os }} with Python ${{ matrix.python-version }} and PyTorch ${{ matrix.torch-version }}"
+    needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -84,10 +85,14 @@ jobs:
         run: |
           uv run pytest -v
 
+      - name: Run API integration tests
+        run: |
+          uv run pytest tests/integrationtests/test_apis.py -v
+
       - name: Run coverage
         run: |
           uv run coverage run -m pytest tests/
-          uv run coverage report -m
+          uv run coverage report -m --fail-under=70
 
   build:
     name: "Build Docker images"

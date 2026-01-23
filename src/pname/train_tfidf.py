@@ -3,7 +3,10 @@
 Fast, explainable, and perfect for MLOps with hyperparameter tuning.
 """
 
+import faulthandler
 import os
+import signal
+import sys
 import time
 from pathlib import Path
 
@@ -20,10 +23,25 @@ import wandb
 from pname.data import arxiv_dataset
 from pname.model_tfidf import TFIDFXGBoostModel
 
+# Enable faulthandler early to catch segfaults
+# This will print a Python stack trace if the process crashes
+faulthandler.enable(file=sys.stderr, all_threads=True)
+
 # Load environment variables
 load_dotenv()
 
 DEVICE = "cpu"  # XGBoost runs on CPU
+
+# Global flag for graceful shutdown
+_shutdown_requested = False
+
+
+def signal_handler(signum, frame):
+    """Handle SIGTERM/SIGINT for graceful shutdown."""
+    global _shutdown_requested
+    logger.warning(f"Received signal {signum}, initiating graceful shutdown...")
+    _shutdown_requested = True
+    # Don't exit immediately - let training finish current iteration if possible
 
 
 def train(cfg: DictConfig) -> None:
@@ -32,6 +50,26 @@ def train(cfg: DictConfig) -> None:
     Args:
         cfg: Hydra configuration dictionary containing model and training settings.
     """
+    # Set up signal handlers for graceful shutdown
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Ensure unbuffered output
+    sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, "reconfigure") else None
+    sys.stderr.reconfigure(line_buffering=True) if hasattr(sys.stderr, "reconfigure") else None
+
+    # Diagnostic: Check if running under emulation (AMD64 on ARM64)
+    import platform
+
+    machine = platform.machine()
+    logger.info(f"Platform: {machine}, Python: {sys.platform}")
+    if machine == "arm64" or machine == "aarch64":
+        logger.info("Running on ARM64 architecture")
+    elif machine == "x86_64" or machine == "AMD64":
+        logger.info("Running on AMD64/x86_64 architecture")
+    else:
+        logger.warning(f"Unknown architecture: {machine}")
+
     logger.info("Training TF-IDF + XGBoost model")
 
     logger.info(f"Configuration:\n{OmegaConf.to_yaml(cfg)}")
@@ -90,8 +128,14 @@ def train(cfg: DictConfig) -> None:
 
     logger.info(f"Training on {len(train_texts)} samples")
 
+    # Map training.epochs to model.n_estimators if epochs is set (for compatibility)
+    model_cfg = OmegaConf.to_container(cfg.model, resolve=True)
+    if cfg.training.get("epochs") is not None:
+        model_cfg["n_estimators"] = cfg.training.epochs
+        logger.info(f"Using training.epochs={cfg.training.epochs} as model.n_estimators")
+
     # Initialize model
-    model = TFIDFXGBoostModel(model_cfg=cfg.model)
+    model = TFIDFXGBoostModel(model_cfg=DictConfig(model_cfg))
     logger.info("Model initialized")
 
     # Train model with early stopping if validation set is available
@@ -227,6 +271,12 @@ def train(cfg: DictConfig) -> None:
     print(f"Model saved to: {model_save_path.resolve()}")
     print(f"{'='*60}\n")
 
+    # Force flush all output before exit
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    logger.info("Training script completed successfully")
+
 
 @hydra.main(version_base=None, config_path="../../configs", config_name="config_tfidf")
 def main(cfg: DictConfig) -> None:
@@ -235,8 +285,43 @@ def main(cfg: DictConfig) -> None:
     Args:
         cfg: Hydra configuration dictionary (automatically loaded).
     """
-    train(cfg)
+    exit_code = 0
+    try:
+        train(cfg)
+    except KeyboardInterrupt:
+        logger.warning("Training interrupted by user (KeyboardInterrupt)")
+        exit_code = 130  # Standard exit code for SIGINT
+    except SystemExit as e:
+        logger.warning(f"SystemExit raised: {e}")
+        exit_code = e.code if isinstance(e.code, int) else 1
+        raise  # Re-raise to let Hydra handle it
+    except Exception as e:
+        logger.error(f"Fatal error in training: {e}")
+        import traceback
+
+        logger.error(traceback.format_exc())
+        # Force flush before exit
+        sys.stdout.flush()
+        sys.stderr.flush()
+        exit_code = 1
+        raise  # Re-raise to let Hydra handle it
+    finally:
+        # Ensure all output is flushed
+        sys.stdout.flush()
+        sys.stderr.flush()
+        if exit_code != 0:
+            sys.exit(exit_code)
 
 
 if __name__ == "__main__":
-    main()
+    # Wrap in try-except to catch any unhandled exceptions
+    try:
+        main()
+    except Exception as e:
+        logger.critical(f"Unhandled exception in main: {e}")
+        import traceback
+
+        logger.critical(traceback.format_exc())
+        sys.stdout.flush()
+        sys.stderr.flush()
+        sys.exit(1)

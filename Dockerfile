@@ -1,5 +1,5 @@
 # FastAPI Dockerfile for production deployment
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
@@ -30,6 +30,10 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose port 80
 EXPOSE 80
+
+# Health check for production API
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
 
 # Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
