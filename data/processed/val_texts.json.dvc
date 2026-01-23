@@ -1,0 +1,5 @@
+outs:
+- md5: 781e8bf2d238a3a5cc9c30b7600fecca
+  size: 21561973
+  hash: md5
+  path: val_texts.json

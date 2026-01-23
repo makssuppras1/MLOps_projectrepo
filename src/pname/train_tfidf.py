@@ -163,19 +163,40 @@ def train(cfg: DictConfig) -> None:
     training_time = time.time() - training_start_time
     logger.info(f"Training completed in {training_time:.2f} seconds ({training_time/60:.2f} minutes)")
 
+    # Evaluate on training set
+    logger.info("Evaluating on training set...")
+    train_preds = model.predict(train_texts)
+    # Normalize to label predictions if classifier returns probability matrix
+    # Ensure predictions are 1D array of integers
+    train_preds = np.asarray(train_preds)
+    if train_preds.ndim == 2:
+        train_preds = np.argmax(train_preds, axis=1)
+    train_preds = train_preds.flatten().astype(int)
+
+    # Ensure train_labels is also a 1D numpy array of integers
+    train_labels_array = np.asarray(train_labels).flatten().astype(int)
+
+    train_accuracy = accuracy_score(train_labels_array, train_preds)
+    logger.info(f"Training accuracy: {train_accuracy:.4f}")
+
+    if wandb_initialized:
+        wandb.log({"train/accuracy": train_accuracy})
+
     # Evaluate on validation set
     if len(val_texts) > 0:
         logger.info("Evaluating on validation set...")
         val_preds = model.predict(val_texts)
         # Normalize to label predictions if classifier returns probability matrix
-        try:
-            import numpy as _np
+        # Ensure predictions are 1D array of integers
+        val_preds = np.asarray(val_preds)
+        if val_preds.ndim == 2:
+            val_preds = np.argmax(val_preds, axis=1)
+        val_preds = val_preds.flatten().astype(int)
 
-            if hasattr(val_preds, "ndim") and getattr(val_preds, "ndim", 1) == 2:
-                val_preds = _np.argmax(val_preds, axis=1)
-        except Exception:
-            pass
-        val_accuracy = accuracy_score(val_labels, val_preds)
+        # Ensure val_labels is also a 1D numpy array of integers
+        val_labels_array = np.asarray(val_labels).flatten().astype(int)
+
+        val_accuracy = accuracy_score(val_labels_array, val_preds)
         logger.info(f"Validation accuracy: {val_accuracy:.4f}")
 
         if wandb_initialized:
@@ -185,14 +206,16 @@ def train(cfg: DictConfig) -> None:
     logger.info("Evaluating on test set...")
     test_preds = model.predict(test_texts)
     # Normalize to label predictions if classifier returns probability matrix
-    try:
-        import numpy as _np
+    # Ensure predictions are 1D array of integers
+    test_preds = np.asarray(test_preds)
+    if test_preds.ndim == 2:
+        test_preds = np.argmax(test_preds, axis=1)
+    test_preds = test_preds.flatten().astype(int)
 
-        if hasattr(test_preds, "ndim") and getattr(test_preds, "ndim", 1) == 2:
-            test_preds = _np.argmax(test_preds, axis=1)
-    except Exception:
-        pass
-    test_accuracy = accuracy_score(test_labels, test_preds)
+    # Ensure test_labels is also a 1D numpy array of integers
+    test_labels_array = np.asarray(test_labels).flatten().astype(int)
+
+    test_accuracy = accuracy_score(test_labels_array, test_preds)
     logger.info(f"Test accuracy: {test_accuracy:.4f}")
 
     # Log metrics
@@ -202,7 +225,7 @@ def train(cfg: DictConfig) -> None:
 
     # Print classification report
     logger.info("\nClassification Report:")
-    logger.info(classification_report(test_labels, test_preds))
+    logger.info(classification_report(test_labels_array, test_preds))
 
     # Get feature importance for explainability
     top_features = model.get_feature_importance(top_n=20)
@@ -237,7 +260,7 @@ def train(cfg: DictConfig) -> None:
     logger.info(f"Model saved to: {model_save_path}")
 
     # Create confusion matrix visualization
-    cm = confusion_matrix(test_labels, test_preds)
+    cm = confusion_matrix(test_labels_array, test_preds)
     fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
     ax.figure.colorbar(im, ax=ax)

@@ -26,7 +26,12 @@ dmypy.json
 *~
 .idea/
 .vscode/
-*.pt
+# Ignore model files but allow data label files
+models/*.pt
+models/*.pth
+models/*.ckpt
+trained_model.pt
+trained_model.pth
 *.pth
 *.ckpt
 outputs/

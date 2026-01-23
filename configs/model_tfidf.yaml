@@ -1,20 +1,26 @@
 # TF-IDF + XGBoost model configuration
 # Optimized for accuracy while remaining fast
-# Memory-optimized: Reduced features/ngrams to fit in 32GB RAM
+# Memory-optimized: Reduced features/ngrams to fit in 32GB RAM (Vertex AI)
+#
+# ⚠️ LOCAL DOCKER REQUIREMENTS:
+# - Full dataset (82k samples × 10k features) requires ~5-6GB RAM minimum
+# - Ensure Docker Desktop memory is set to 8GB+ (Settings → Resources → Memory)
+# - If OOM errors (ExitCode=137), reduce training.max_samples or model.max_features
+# - See docs/OOM_FIX.md for detailed troubleshooting
 model:
   num_labels: 5
-  max_features: 10000  # Reduced from 20000 to save memory (still plenty for good accuracy)
+  max_features: 10000  # Optimized from sweep test
   stop_words: "english"
   ngram_range_min: 1  # Minimum n-gram size
-  ngram_range_max: 2  # Reduced from 3 to 2 (unigrams + bigrams only) to save memory
-  min_df: 2  # Increased from 1 to reduce feature count slightly
-  max_df: 0.9  # Slightly lower max_df to filter out very common words
-  max_depth: 10  # Deeper trees for better feature interactions
-  learning_rate: 0.1  # Higher LR for faster convergence (early stopping will prevent overfitting)
-  n_estimators: 500  # More boosting rounds (early stopping will stop early if needed)
-  subsample: 0.85  # Row subsampling (prevents overfitting)
-  colsample_bytree: 0.85  # Column subsampling (prevents overfitting)
-  reg_alpha: 0.05  # Reduced L1 regularization (less aggressive)
-  reg_lambda: 0.5  # Reduced L2 regularization (less aggressive)
-  early_stopping_rounds: 20  # Stop if no improvement for 20 rounds
+  ngram_range_max: 3  # Optimized from sweep test (unigrams + bigrams + trigrams)
+  min_df: 5  # Optimized from sweep test
+  max_df: 0.7152124944236803  # Optimized from sweep test
+  max_depth: 8  # Optimized from sweep test
+  learning_rate: 0.04297016347000527  # Optimized from sweep test
+  n_estimators: 1000  # Optimized from sweep test
+  subsample: 0.7654053111795991  # Optimized from sweep test
+  colsample_bytree: 0.7066637762929179  # Optimized from sweep test
+  reg_alpha: 0.03872366298547403  # Optimized from sweep test
+  reg_lambda: 0.7404807901247237  # Optimized from sweep test
+  early_stopping_rounds: 10  # Optimized from sweep test
   random_state: 42  # Random seed for reproducibility (should match training.seed)

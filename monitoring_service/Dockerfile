@@ -1,5 +1,17 @@
 # Dockerfile for Drift Detection API Service
-
+# Supports multi-platform builds (ARM64 for local, AMD64 for GCP)
+#
+# Single platform build:
+#   docker buildx build --platform linux/amd64 -f monitoring_service/Dockerfile -t monitoring:latest .
+#   docker buildx build --platform linux/arm64 -f monitoring_service/Dockerfile -t monitoring:latest .
+#
+# Multi-platform build (recommended - works on both ARM64 Mac and AMD64 GCP):
+#   docker buildx build --platform linux/amd64,linux/arm64 -f monitoring_service/Dockerfile -t monitoring:latest --push .
+#   (or without --push for local use: docker buildx build --platform linux/amd64,linux/arm64 -f monitoring_service/Dockerfile -t monitoring:latest --load .)
+#
+# Docker automatically selects the native architecture when running the image.
+# TARGETPLATFORM is automatically set by buildx when using --platform flag
+ARG TARGETPLATFORM=linux/amd64
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Install build essentials
