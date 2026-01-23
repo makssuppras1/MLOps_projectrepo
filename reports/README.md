@@ -109,12 +109,12 @@ will check the repositories and the code to verify your answers.
 
 ### Extra
 
-* [ ] Write some documentation for your application (M32)
+* [x] Write some documentation for your application (M32)
 * [ ] Publish the documentation to GitHub Pages (M32)
-* [ ] Revisit your initial project description. Did the project turn out as you wanted?
-* [ ] Create an architectural diagram over your MLOps pipeline
-* [ ] Make sure all group members have an understanding about all parts of the project
-* [ ] Uploaded all your code to GitHub
+* [x] Revisit your initial project description. Did the project turn out as you wanted?
+* [x] Create an architectural diagram over your MLOps pipeline
+* [x] Make sure all group members have an understanding about all parts of the project
+* [x] Uploaded all your code to GitHub
 
 ## Group information
 
@@ -301,8 +301,6 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 > *We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our*
 > *pipeline*
 >
-> Answer:
-
 DVC was used for managing the data in our project. We configured DVC with Google Clound Storage (GCS) as our remote storage backend, which allowed us to version control our dataset effectively. For collaboration between team members it offers the advantage of ensuring that everone is working on the same data, for example instead of downloading the dataset and running the preprocessing every time, each team member simply gets the dataset from the cloud.
 
 In truth it might have been overkill to do data version control for this specific dataset as it is static, and the preprocessing was relatively banal and unlikely to change during the project. If our dataset consisted every scientific paper and was updated every time a new paper was published it would definately make data version control a requirement for this project.
@@ -322,6 +320,8 @@ In truth it might have been overkill to do data version control for this specifi
 >
 > Answer:
 
+TODO describe in detail some of the important tests that we are running.
+
 The Continuous integration setup consists of 'GitHub Actions' workflows located in the tests.yaml file. The file runs when a pull requests or a push to main is made. It runs three jobs, unit testing, linting, and basic packaging checks.
 
 * **Testing**: checks out the repo, sets up uv, caches dependencies, installs project dependencies, installs a specified PyTorch version for testing, runs pytest, and then runs coverage. The test across multiple platforms (Ubuntu, MacOS and Windows) and python versions (3.12, 3.13) to ensure a minimum level of compatibility.
@@ -334,7 +334,7 @@ Github's Caching is utilized to store the python packages from the uv.lock file,
 
 An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
-**Description of two critical unit tests**
+**description of two critical unit tests**
 
  1. `test_preprocess_data_creates_output_files` from `test_data.py` \
 The purpose of this test is to validate the data preprocessing pipeline that is the foundation for all subsequent machine learning tasks. It creates a temporary directory with a csv file that contains 4 sample research papers with the columns title, abstract, and category and runs preprocess_data(). It then verifies that the following artifacts exists; train_texts.json, train_labels.pt, test_texts.json, test_labels.pt, and category_mapping.json. \
@@ -344,6 +344,7 @@ This test is critical because our model relies on these artifacts being present 
 The purpose of this test is to ensure that the tf-idf model doesn't leak validation/test data into its vocab learning. \
 It creates three seperate text datasets (6 training, 1 validation, and 1 test) and trains the model. It verifies that all three datasets produce the same number of features and that the predictions work on the validations and test sets. \
 This test is critical because data leakage can skew the model and destroy its performance in production. If this tests fails then we know that the model is unreliable.
+
 
 ## Running code and tracking experiments
 
@@ -613,15 +614,14 @@ The API supports both local testing (`localhost:8000`) and production Cloud Run 
 
 ### Question 25
 
-> **Did you perform any functional testing and load testing of your API? If yes, explain how you did it and what**
-> **results for the load testing did you get. If not, explain how you would do it.**
+> **Did you perform any unit testing and load testing of your API? If yes, explain how you did it and what results for**
+> **the load testing did you get. If not, explain how you would do it.**
 >
 > Recommended answer length: 100-200 words.
 >
 > Example:
-> *For functional testing we used pytest with httpx to test our API endpoints and ensure they returned the correct*
-> *responses. For load testing we used locust with 100 concurrent users. The results of the load testing showed that*
-> *our API could handle approximately 500 requests per second before the service crashed.*
+> *For unit testing we used ... and for load testing we used ... . The results of the load testing showed that ...*
+> *before the service crashed.*
 >
 > Answer:
 
@@ -688,7 +688,7 @@ For us the service which proved the most exspensive was the *Compute Engine*, ho
 >
 > Answer:
 
-We implemented no additional elements.
+--- question 28 fill here ---
 
 ### Question 29
 
@@ -751,4 +751,4 @@ By far the biggest challenge with this project was interacting with Google Cloud
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
-Here we will writre our contribution.
+--- question 31 fill here ---
