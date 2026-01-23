@@ -567,9 +567,11 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
-We did manage to write an API for our model. We used **FastAPI** to create the *"ArXiv Paper Classifier API"* located in [app/main.py](app/main.py). The API includes **four endpoints**: GET `/` (root), GET `/health` (status check), POST `/load` (model loading), and POST `/predict` (classification). We implemented **dual model support** for both PyTorch (DistilBERT) and TF-IDF + XGBoost models in the same API.
+We successfully built a functional API using **FastAPI**, which we organized into a dedicated `app/` folder to keep the code clean and separate from our training logic. While the API handles standard tasks like classification through a `/predict` endpoint, we added several "special" features to make it more robust for a real-world MLOps setting.
 
-We also added **structured request/response models** using Pydantic with detailed prediction responses including class probabilities, confidence scores, and class names. The API includes **error handling** with proper HTTP status codes and **automatic model discovery** on startup. We containerized it with [api.dockerfile](dockerfiles/api.dockerfile) and created **integration tests** in [test_apis.py](tests/integrationtests/test_apis.py) plus **load testing infrastructure** using Locust for performance validation.
+One of the coolest things we implemented was dual model support, allowing the same API to switch between our DistilBERT and XGBoost models. To go beyond a basic tutorial, we also built a request logging pipeline that automatically saves prediction data to Google Cloud Storage. This is a critical step for monitoring because it allows us to track how the model performs after deployment.
+
+We also focused on reliability by using **Pydantic** to strictly validate incoming data and adding a `/monitoring` endpoint that serves **Evidently AI** reports to check for data drift. The API is fully containerized and was tested using **Locust** to make sure it wouldn't crash if multiple people tried to use it at once.
 
 ### Question 24
 
