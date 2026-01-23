@@ -751,4 +751,6 @@ With lenghts to other challenges, the biggest challenge we faced in this project
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
-Herer we will write our contribution
+The project was developed in collaboration with unclear responsibilities, we developed everything ad hoc in a hybrid development styled collaboration. Maks, s204614, KurtRavn contributed with core machine learning training infrastructure, data pipelines, model implementations, API development, Docker-based deployment, CI/CD workflows, monitoring components, and DevOps tooling. Oliver, s204634, OliverKviat, contributed to the testing infrastructure and project documentation, authoring a major part of unit tests, the main project report as well as the setup of everything GCP related. Kasper, s204598, KasperKL1 contributed to model implementations, the TF-IDF training pipeline, extensive testing (including integration, monitoring, and backward compatibility tests), configuration files, and CI/CD-related files.
+
+The following generative ai tools were used for development assistance throughout this project: ChatGPT, Cursor.ai, and copilot. All AI-generated output was reviewed and adapted by the students, and all design decisions and implementations were entirely student-driven.
