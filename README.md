@@ -2,7 +2,7 @@
 
 The primary goal of this project is to build a functional MLOps pipeline for a scientific paper classification task. While the underlying machine learning problem is to categorize papers based on citation networks, the "product" of this project is the infrastructure surrounding the model, not the model itself.
 
-We aim to take a transformer model, train it for our text classification purposes and wrap it in professional DevOps practices. The goal is to achieve three core milestones:
+We aim to take a transformer model, train it for our text classification purposes and wrap it in cool DevOps practices. The goal is to achieve three core milestones:
 
 - **Reproducibility:** Ensuring anyone can run our code and get the same results.
 - **Automation:** Using tools to handle training and testing automatically.

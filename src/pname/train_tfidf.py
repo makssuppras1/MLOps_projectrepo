@@ -163,6 +163,15 @@ def train(cfg: DictConfig) -> None:
     training_time = time.time() - training_start_time
     logger.info(f"Training completed in {training_time:.2f} seconds ({training_time/60:.2f} minutes)")
 
+    # Evaluate on training set
+    logger.info("Evaluating on training set...")
+    train_preds = model.predict(train_texts)
+    train_accuracy = accuracy_score(train_labels, train_preds)
+    logger.info(f"Training accuracy: {train_accuracy:.4f}")
+
+    if wandb_initialized:
+        wandb.log({"train/accuracy": train_accuracy})
+
     # Evaluate on validation set
     if len(val_texts) > 0:
         logger.info("Evaluating on validation set...")
