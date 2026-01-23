@@ -150,9 +150,11 @@ s204634, s204614, s204598
 
 We used two main approaches for our text classification tasks on scientific papers:
 
-1. **Transformers (Hugging Face)**: We used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development and enabling us to leverage state-of-the-art contextual embeddings for classification. However it proved hard to find a sweetspot for training on the gcloud that we turned to simpler and older libraries.
+1. **Transformers (Hugging Face)**: We initally used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development. However it proved hard to find a sweetspot for training, which resulted in us favoring simpler and older libraries.
 
 2. **TF-IDF + XGBoost**: In addition to deep learning, we implemented a classical pipeline using scikit-learn's **TF-IDF** vectorizer combined with an **XGBoost** classifier. This approach embeds the documents into sparse feature vectors and then uses the gradient boosted tree model for robust classification. Training for this pipeline is handled in our repository via a dedicated script and configuration, allowing us to compare classical and transformer-based methodologies in both local and cloud environments.
+
+Additionally, we incorporated **PyArrow** for efficient data storage and retrieval in Parquet format, enabling faster I/O operations and better compression for our large dataset. **Pillow** was used for image processing tasks, particularly for handling any visual elements or converting image data when needed in our data pipeline.
 
 Both models and training pipelines are available in our codebase, and can be selected via configuration for experimentation or production use.
 
