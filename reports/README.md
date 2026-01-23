@@ -177,11 +177,25 @@ Both models and training pipelines are available in our codebase, and can be sel
 > Answer:
 
 We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to:
-1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)),
+
+1) Install UV package manager following the [official guide](https://docs.astral.sh/uv/getting-started/installation/),
 2) Clone the repository,
-3) Run `uv sync` to install all dependencies exactly as specified in the lock file,
-4) Download the data to your local repository buy running the following command in the terminal: ``uv run sh curl_arxiv-scientific-research-papers-dataset``
-5) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
+3) Run the following command to create a virtual environment and install all main and development dependencies:
+```bash
+uv sync --all-groups
+```
+4) Since we use DVC to track large datasets without bloating the Git history, run the following to pull the data tracked by the project:
+```bash
+dvc pull
+```
+5) If additional raw data needs to be fetched, execute the download script:
+```bash
+sh scripts/download_dataset.sh
+```
+6) We use `invoke` for project orchestration. To verify ones setup run the following:
+```bash
+uv run inv --list
+```
 
 ### Question 5
 
