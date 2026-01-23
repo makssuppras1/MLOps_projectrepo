@@ -16,10 +16,10 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-import numpy as np
-from omegaconf import DictConfig
+import numpy as np  # noqa: E402
+from omegaconf import DictConfig  # noqa: E402
 
-from pname.model_tfidf import TFIDFXGBoostModel
+from pname.model_tfidf import TFIDFXGBoostModel  # noqa: E402
 
 
 def test_pipeline_initialization():
