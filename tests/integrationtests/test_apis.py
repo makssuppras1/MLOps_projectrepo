@@ -66,6 +66,31 @@ class TestPredictEndpoint:
             else:
                 pytest.fail(f"Unexpected status code: {response.status_code}")
 
+    def test_health_endpoint_reports_model_status(self):
+        """Test that /health endpoint accurately reports model loading status.
+
+        This test ensures that model loading failures are detectable via the health endpoint.
+        """
+        with TestClient(app) as client:
+            response = client.get("/health")
+            assert response.status_code == 200
+            data = response.json()
+
+            # Health endpoint should always return these fields
+            assert "status" in data
+            assert "model_loaded" in data
+            assert "model_type" in data
+            assert "device" in data
+
+            # Status should be "healthy" even if model is not loaded
+            assert data["status"] == "healthy"
+
+            # model_loaded should be a string representation of boolean
+            model_loaded = (
+                data["model_loaded"].lower() if isinstance(data["model_loaded"], str) else data["model_loaded"]
+            )
+            assert model_loaded in ["true", "false", True, False]
+
     def test_predict_invalid_input_missing_field(self):
         """Test POST /predict with missing required field returns 422."""
         with TestClient(app) as client:

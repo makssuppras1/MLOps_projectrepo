@@ -1,0 +1,81 @@
+name: Deploy Drift Detection API to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "monitoring_service/**"
+      - "monitoring/**"
+      - "ci/cloudbuild-monitoring.yaml"
+      - ".github/workflows/deploy-monitoring.yaml"
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: europe-west1
+  SERVICE_NAME: drift-detection-api
+  IMAGE_NAME: drift-detection-api
+
+jobs:
+  build-and-deploy:
+    name: "Build and Deploy Drift Detection API to Cloud Run"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Auth with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCP
+        run: |
+          gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
+      - name: Build and push monitoring Docker image
+        run: |
+          PROJECT_ID="${{ env.PROJECT_ID || 'dtumlops-484310' }}"
+          gcloud builds submit . \
+            --config ci/cloudbuild-monitoring.yaml \
+            --substitutions=_IMAGE_NAME=${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID || 'dtumlops-484310' }}
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image europe-west1-docker.pkg.dev/${PROJECT_ID}/container-registry/${{ env.IMAGE_NAME }}:latest \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --port 8001 \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 300 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --set-env-vars "GCS_BUCKET=mlops_project_data_bucket1-europe-west1,GCS_ARTIFACT_PREFIX=monitoring/drift_artifacts" \
+            --quiet
+
+      - name: Get service URL
+        id: service-url
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Service deployed at: $URL"
+
+      - name: Output deployment URL
+        run: |
+          echo "✅ Drift Detection API deployed successfully!"
+          echo "Service URL: ${{ steps.service-url.outputs.url }}"
+          echo "Health check: ${{ steps.service-url.outputs.url }}/health"
+          echo "Run drift detection: curl -X POST ${{ steps.service-url.outputs.url }}/drift/run"

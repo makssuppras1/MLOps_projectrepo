@@ -1,0 +1,96 @@
+name: Deploy API to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "dockerfiles/api.dockerfile"
+      - "Dockerfile"
+      - "src/pname/model*.py"
+      - "pyproject.toml"
+      - ".github/workflows/deploy-api.yaml"
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: europe-west1
+  SERVICE_NAME: arxiv-classifier-api
+  IMAGE_NAME: inference-api
+
+jobs:
+  build-and-deploy:
+    name: "Build and Deploy API to Cloud Run"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Auth with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCP
+        run: |
+          gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
+      - name: Build and push API Docker image
+        run: |
+          PROJECT_ID="${{ env.PROJECT_ID || 'dtumlops-484310' }}"
+          gcloud builds submit . \
+            --config ci/cloudbuild-api.yaml \
+            --substitutions=_IMAGE_NAME=${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID || 'dtumlops-484310' }}
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image europe-west1-docker.pkg.dev/${PROJECT_ID}/container-registry/${{ env.IMAGE_NAME }}:latest \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --port 8000 \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 300 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --set-env-vars "REQUEST_LOG_PATH=/tmp/api_requests.csv" \
+            --quiet
+
+      - name: Get service URL
+        id: service-url
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format 'value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Service deployed at: $URL"
+
+      - name: Comment deployment URL (on PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.service-url.outputs.url }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 API deployed to Cloud Run!\n\nService URL: ${url}\n\nTest the API:\n- Health: ${url}/health\n- Predict: ${url}/predict`
+            });
+
+      - name: Output deployment URL
+        run: |
+          echo "✅ API deployed successfully!"
+          echo "Service URL: ${{ steps.service-url.outputs.url }}"
+          echo "Health check: ${{ steps.service-url.outputs.url }}/health"
+          echo "Test prediction: curl -X POST ${{ steps.service-url.outputs.url }}/predict -H 'Content-Type: application/json' -d '{\"text\":\"test\"}'"

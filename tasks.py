@@ -13,9 +13,21 @@ PYTHON_VERSION = "3.12"
 
 # Project commands
 @task
-def preprocess_data(ctx: Context) -> None:
-    """Preprocess data."""
-    ctx.run(f"uv run src/{PROJECT_NAME}/data.py data/raw data/processed", echo=True, pty=not WINDOWS)
+def download_data(ctx: Context, force: bool = False) -> None:
+    """Download ArXiv dataset."""
+    force_flag = " --force" if force else ""
+    ctx.run(f"uv run src/{PROJECT_NAME}/data.py download{force_flag}", echo=True, pty=not WINDOWS)
+
+
+@task
+def preprocess_data(ctx: Context, download: bool = False) -> None:
+    """Preprocess data. Use --download to automatically download if data is missing."""
+    download_flag = " --download" if download else ""
+    ctx.run(
+        f"uv run src/{PROJECT_NAME}/data.py preprocess data/raw data/processed{download_flag}",
+        echo=True,
+        pty=not WINDOWS,
+    )
 
 
 @task
@@ -285,6 +297,93 @@ def list_jobs(ctx: Context, region: str = "europe-west1", limit: int = 10) -> No
     """List recent Vertex AI jobs."""
     ctx.run(
         f"gcloud ai custom-jobs list --region={region} --limit={limit} --format='table(displayName,state,createTime)'",
+        echo=True,
+        pty=not WINDOWS,
+    )
+
+
+@task
+def deploy_api(
+    ctx: Context,
+    service_name: str = "arxiv-classifier-api",
+    region: str = "europe-west1",
+    project_id: str = "dtumlops-484310",
+    image_name: str = "inference-api",
+    allow_unauthenticated: bool = True,
+) -> None:
+    """Deploy API to Cloud Run.
+
+    Builds the API Docker image, pushes it to Artifact Registry, and deploys to Cloud Run.
+
+    Args:
+        service_name: Name of the Cloud Run service.
+        region: GCP region for deployment.
+        project_id: GCP project ID.
+        image_name: Name of the Docker image.
+        allow_unauthenticated: If True, allows unauthenticated access to the service.
+    """
+    # Step 1: Build and push Docker image
+    ctx.run("echo 'Step 1: Building and pushing API Docker image...'", echo=True)
+    docker_build_and_push_gcp(
+        ctx, "dockerfiles/api.dockerfile", f"{image_name}:latest", region, project_id, "container-registry"
+    )
+
+    # Step 2: Deploy to Cloud Run
+    ctx.run(f"echo 'Step 2: Deploying to Cloud Run service: {service_name}...'", echo=True)
+
+    image_url = f"europe-west1-docker.pkg.dev/{project_id}/container-registry/{image_name}:latest"
+
+    deploy_cmd = (
+        f"gcloud run deploy {service_name} "
+        f"--image {image_url} "
+        f"--platform managed "
+        f"--region {region} "
+        f"--port 8000 "
+        f"--memory 2Gi "
+        f"--cpu 2 "
+        f"--timeout 300 "
+        f"--max-instances 10 "
+        f"--min-instances 0 "
+        f"--set-env-vars REQUEST_LOG_PATH=/tmp/api_requests.csv"
+    )
+
+    if allow_unauthenticated:
+        deploy_cmd += " --allow-unauthenticated"
+
+    ctx.run(deploy_cmd, echo=True, pty=not WINDOWS)
+
+    # Step 3: Get and display service URL
+    ctx.run("echo 'Step 3: Retrieving service URL...'", echo=True)
+    result = ctx.run(
+        f"gcloud run services describe {service_name} --region={region} --format='value(status.url)'",
+        echo=True,
+        hide="stdout",
+    )
+    service_url = result.stdout.strip()
+
+    ctx.run("echo '✅ API deployed successfully!'", echo=True)
+    ctx.run(f"echo 'Service URL: {service_url}'", echo=True)
+    ctx.run(f"echo 'Health check: {service_url}/health'", echo=True)
+    ctx.run(
+        f'echo \'Test: curl -X POST {service_url}/predict -H "Content-Type: application/json" -d \'{{"text":"test"}}\'\'',
+        echo=True,
+    )
+
+
+@task
+def get_api_url(
+    ctx: Context,
+    service_name: str = "arxiv-classifier-api",
+    region: str = "europe-west1",
+) -> None:
+    """Get the URL of the deployed Cloud Run API service.
+
+    Args:
+        service_name: Name of the Cloud Run service.
+        region: GCP region.
+    """
+    ctx.run(
+        f"gcloud run services describe {service_name} --region={region} --format='value(status.url)'",
         echo=True,
         pty=not WINDOWS,
     )

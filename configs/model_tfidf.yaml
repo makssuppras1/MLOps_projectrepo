@@ -17,3 +17,4 @@ model:
   reg_alpha: 0.05  # Reduced L1 regularization (less aggressive)
   reg_lambda: 0.5  # Reduced L2 regularization (less aggressive)
   early_stopping_rounds: 20  # Stop if no improvement for 20 rounds
+  random_state: 42  # Random seed for reproducibility (should match training.seed)

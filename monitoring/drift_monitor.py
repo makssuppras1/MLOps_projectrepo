@@ -98,9 +98,12 @@ def run_drift_monitoring() -> dict:
     evaluation.save_html(str(DRIFT_REPORT_PATH))
     logger.info(f"HTML report saved: {DRIFT_REPORT_PATH}")
 
-    # Extract drift status
+    # Extract drift status and top drifted features
     drift_detected = False
+    top_drifted_features = []
+
     try:
+        # Parse Evidently results to extract feature-level drift
         if hasattr(evaluation, "metric_results") and evaluation.metric_results:
             for metric_result in evaluation.metric_results:
                 if isinstance(metric_result, dict):
@@ -111,9 +114,20 @@ def run_drift_monitoring() -> dict:
                             count = result_data.get("current", {}).get("value", 0)
                             if count > 0:
                                 drift_detected = True
-                                break
+                    elif "ColumnDriftMetric" in metric_id:
+                        # Extract feature name and drift status
+                        result_data = metric_result.get("result", {})
+                        if isinstance(result_data, dict):
+                            column_name = result_data.get("column_name", "")
+                            drift_score = result_data.get("drift_score", 0.0)
+                            if drift_score > 0.5:  # Threshold for significant drift
+                                top_drifted_features.append(column_name)
     except Exception as e:
         logger.warning(f"Could not extract drift status: {e}")
+
+    # Fallback: if drift detected but no features listed, use default features
+    if drift_detected and not top_drifted_features:
+        top_drifted_features = feature_cols
 
     # Save JSON results
     results = {
@@ -121,6 +135,7 @@ def run_drift_monitoring() -> dict:
         "reference_rows": len(reference_df),
         "current_rows": len(current_df),
         "drift_detected": drift_detected,
+        "top_drifted_features": top_drifted_features,
         "notes": "Drift detected" if drift_detected else "No drift detected",
     }
 
@@ -137,6 +152,8 @@ def run_drift_monitoring() -> dict:
         "report_path": str(DRIFT_REPORT_PATH),
         "results_path": str(DRIFT_RESULTS_PATH),
         "drift_detected": drift_detected,
+        "top_drifted_features": top_drifted_features,
+        "timestamp": results["timestamp"],
         "notes": results["notes"],
     }
 

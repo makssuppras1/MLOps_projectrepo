@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 from omegaconf import DictConfig
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
 
@@ -81,10 +82,19 @@ class TFIDFXGBoostModel:
             reg_lambda=model_cfg.get("reg_lambda", 1.0),  # L2 regularization
             objective="multi:softprob",
             num_class=self.num_labels,
-            random_state=42,
+            random_state=model_cfg.get("random_state", 42),  # Use config seed for reproducibility
             n_jobs=-1,  # Use all CPU cores
             eval_metric="mlogloss",
             early_stopping_rounds=early_stopping_rounds,  # Set in constructor for XGBoost 1.6+
+        )
+
+        # Wrap vectorizer and classifier in sklearn Pipeline for unified serialization
+        # This ensures preprocessing is always applied during inference
+        self.pipeline = Pipeline(
+            [
+                ("vectorizer", self.vectorizer),
+                ("classifier", self.classifier),
+            ]
         )
 
     def fit(
@@ -104,6 +114,8 @@ class TFIDFXGBoostModel:
         print(f"Training matrix shape: {X.shape}")
 
         # Train classifier with early stopping if validation set provided
+        # Note: Early stopping requires eval_set which doesn't work with Pipeline.fit(),
+        # so we fit components separately, then update the pipeline
         if val_texts is not None and val_labels is not None:
             print(f"Vectorizing {len(val_texts)} validation texts...")
             X_val = self.vectorizer.transform(val_texts)
@@ -139,6 +151,10 @@ class TFIDFXGBoostModel:
                 print(traceback.format_exc())
                 raise
 
+        # Update pipeline with fitted components
+        # This ensures pipeline.predict() works correctly after fitting
+        self.pipeline.steps[1] = ("classifier", self.classifier)
+
     def predict(self, texts: list[str]) -> np.ndarray:
         """Predict class labels.
 
@@ -148,8 +164,8 @@ class TFIDFXGBoostModel:
         Returns:
             Array of predicted class labels.
         """
-        X = self.vectorizer.transform(texts)
-        return self.classifier.predict(X)
+        # Use pipeline to ensure preprocessing is always applied
+        return self.pipeline.predict(texts)
 
     def predict_proba(self, texts: list[str]) -> np.ndarray:
         """Predict class probabilities.
@@ -160,8 +176,8 @@ class TFIDFXGBoostModel:
         Returns:
             Array of predicted probabilities [n_samples, n_classes].
         """
-        X = self.vectorizer.transform(texts)
-        return self.classifier.predict_proba(X)
+        # Use pipeline to ensure preprocessing is always applied
+        return self.pipeline.predict_proba(texts)
 
     def get_feature_importance(self, top_n: int = 20) -> list[tuple[str, float]]:
         """Get top feature importances for explainability.
@@ -195,10 +211,12 @@ class TFIDFXGBoostModel:
         path_obj = Path(path)
         path_obj.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save both vectorizer and classifier
+        # Save pipeline (which contains both vectorizer and classifier) for unified serialization
+        # Also save individual components for backward compatibility
         model_dict = {
-            "vectorizer": self.vectorizer,
-            "classifier": self.classifier,
+            "pipeline": self.pipeline,  # Primary: unified pipeline
+            "vectorizer": self.vectorizer,  # Backward compatibility
+            "classifier": self.classifier,  # Backward compatibility
             "config": self.model_cfg,
         }
 
@@ -220,7 +238,22 @@ class TFIDFXGBoostModel:
 
         # Create instance
         instance = cls(model_cfg=model_dict["config"])
-        instance.vectorizer = model_dict["vectorizer"]
-        instance.classifier = model_dict["classifier"]
+
+        # Load pipeline if available (new format), otherwise reconstruct from components (backward compatibility)
+        if "pipeline" in model_dict:
+            instance.pipeline = model_dict["pipeline"]
+            # Extract components from pipeline for backward compatibility
+            instance.vectorizer = instance.pipeline.named_steps["vectorizer"]
+            instance.classifier = instance.pipeline.named_steps["classifier"]
+        else:
+            # Backward compatibility: reconstruct pipeline from individual components
+            instance.vectorizer = model_dict["vectorizer"]
+            instance.classifier = model_dict["classifier"]
+            instance.pipeline = Pipeline(
+                [
+                    ("vectorizer", instance.vectorizer),
+                    ("classifier", instance.classifier),
+                ]
+            )
 
         return instance

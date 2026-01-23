@@ -1,7 +1,7 @@
 # Base image with Python and uv pre-installed
 # CRITICAL: Always build for linux/amd64 platform (required for GCP)
 # Use: docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest .
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Install build essentials
 RUN apt update && \
@@ -23,9 +23,9 @@ WORKDIR /
 RUN mkdir -p /outputs
 VOLUME ["/outputs"]
 
-# Install dependencies
+# Install dependencies with cache mount for faster rebuilds
 ENV UV_LINK_MODE=copy
-RUN uv sync --frozen --no-cache --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache --no-install-project
 
 # Entrypoint for training script
 # Data will be accessed via /gcs/ mounted filesystem in Vertex AI

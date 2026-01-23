@@ -1,11 +1,14 @@
 import csv
 import json
 import random
+import zipfile
 from collections import Counter
 from pathlib import Path
 
+import requests
 import torch
 import typer
+from loguru import logger
 
 # GCS support removed - using only local and mounted paths
 
@@ -17,6 +20,103 @@ def _extract_typer_default(value, default):
     return value
 
 
+def download_data(
+    raw_dir: str = "data/raw",
+    dataset_url: str = "https://www.kaggle.com/api/v1/datasets/download/sumitm004/arxiv-scientific-research-papers-dataset",
+    force_download: bool = False,
+) -> None:
+    """Download ArXiv dataset from Kaggle and extract it.
+
+    Downloads the dataset zip file, extracts it to raw_dir, and removes the zip file.
+    Skips download if CSV files already exist in raw_dir (unless force_download=True).
+
+    Args:
+        raw_dir: Path to directory where raw data will be saved (default: "data/raw").
+        dataset_url: URL to download the dataset from (default: Kaggle API URL).
+        force_download: If True, download even if data already exists (default: False).
+
+    Raises:
+        FileNotFoundError: If required tools (curl or unzip) are not available.
+        requests.RequestException: If download fails.
+        zipfile.BadZipFile: If downloaded file is not a valid zip file.
+    """
+    raw_dir_path = Path(raw_dir)
+    raw_dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Check if data already exists (look for CSV files)
+    csv_files = list(raw_dir_path.glob("*.csv"))
+    if csv_files and not force_download:
+        logger.info(f"Data already exists in {raw_dir_path} ({len(csv_files)} CSV files found). Skipping download.")
+        logger.info("To force re-download, use --force-download flag or set force_download=True")
+        return
+
+    if csv_files and force_download:
+        logger.info(f"Force download requested. Existing {len(csv_files)} CSV files will be overwritten.")
+
+    zip_path = raw_dir_path / "arxiv-scientific-research-papers-dataset.zip"
+
+    logger.info(f"Downloading ArXiv dataset from {dataset_url}")
+    logger.info(f"Target directory: {raw_dir_path}")
+
+    try:
+        # Download using requests
+        response = requests.get(dataset_url, stream=True, timeout=300)
+        response.raise_for_status()
+
+        # Save to zip file
+        total_size = int(response.headers.get("content-length", 0))
+        downloaded = 0
+
+        with open(zip_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = (downloaded / total_size) * 100
+                        if downloaded % (10 * 1024 * 1024) == 0:  # Log every 10MB
+                            logger.info(
+                                f"Downloaded {downloaded / (1024*1024):.1f} MB / {total_size / (1024*1024):.1f} MB ({percent:.1f}%)"
+                            )
+
+        logger.info(f"Download complete. File size: {zip_path.stat().st_size / (1024*1024):.1f} MB")
+
+        # Extract zip file
+        logger.info(f"Extracting {zip_path.name} to {raw_dir_path}")
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(raw_dir_path)
+        logger.info("Extraction complete")
+
+        # Remove zip file
+        zip_path.unlink()
+        logger.info(f"Removed zip file: {zip_path}")
+
+        # Verify extraction by checking for CSV files
+        extracted_csv_files = list(raw_dir_path.glob("*.csv"))
+        if not extracted_csv_files:
+            logger.warning(f"No CSV files found after extraction. Contents of {raw_dir_path}:")
+            for item in raw_dir_path.iterdir():
+                logger.warning(f"  - {item.name} ({'directory' if item.is_dir() else 'file'})")
+        else:
+            logger.info(f"Successfully extracted {len(extracted_csv_files)} CSV files")
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to download dataset: {e}")
+        if zip_path.exists():
+            zip_path.unlink()
+        raise
+    except zipfile.BadZipFile as e:
+        logger.error(f"Downloaded file is not a valid zip file: {e}")
+        if zip_path.exists():
+            zip_path.unlink()
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during download: {e}")
+        if zip_path.exists():
+            zip_path.unlink()
+        raise
+
+
 def preprocess_data(
     raw_dir: str = typer.Argument(..., help="Path to raw data directory"),
     processed_dir: str = typer.Argument(..., help="Path to processed data directory"),
@@ -25,12 +125,16 @@ def preprocess_data(
     test_split: float = typer.Option(0.15, help="Fraction of data to use for testing"),
     seed: int = typer.Option(42, help="Random seed for train/val/test split"),
     num_categories: int = typer.Option(5, help="Number of categories to keep (top N most frequent)"),
+    download: bool = typer.Option(False, help="Download dataset if not present in raw_dir"),
+    force_download: bool = typer.Option(False, help="Force re-download even if data exists"),
 ) -> None:
     """Process raw ArXiv data and save it to processed directory.
 
     Loads ArXiv dataset from raw_dir, processes text (title + abstract),
     filters to top N categories, encodes categories as labels, splits into train/val/test,
     and saves to processed_dir.
+
+    Optionally downloads the dataset if it's not present (use --download flag).
 
     Args:
         raw_dir: Path to directory containing raw CSV files.
@@ -40,6 +144,8 @@ def preprocess_data(
         test_split: Fraction of data to use for testing (default: 0.15).
         seed: Random seed for reproducible train/val/test split (default: 42).
         num_categories: Number of categories to keep - top N most frequent (default: 5).
+        download: If True, download dataset if not present in raw_dir (default: False).
+        force_download: If True, force re-download even if data exists (default: False).
 
     Raises:
         FileNotFoundError: If no CSV file is found in raw_dir.
@@ -51,9 +157,21 @@ def preprocess_data(
     test_split = _extract_typer_default(test_split, 0.15)
     seed = _extract_typer_default(seed, 42)
     num_categories = _extract_typer_default(num_categories, 5)
+    download = _extract_typer_default(download, False)
+    force_download = _extract_typer_default(force_download, False)
 
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
+
+    # Check for existing CSV files
+    csv_files = list(raw_dir.glob("*.csv"))
+
+    # Download data if requested
+    if download:
+        logger.info("Downloading dataset...")
+        download_data(raw_dir=str(raw_dir), force_download=force_download)
+        # Re-check for CSV files after download
+        csv_files = list(raw_dir.glob("*.csv"))
 
     # Validate splits sum to 1.0
     if abs(train_split + val_split + test_split - 1.0) > 1e-6:
@@ -64,11 +182,14 @@ def preprocess_data(
     # Create processed directory if it doesn't exist
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # Find CSV file in raw directory
-    csv_files = list(raw_dir.glob("*.csv"))
+    # Find CSV file in raw directory (should exist after download if download was requested)
     if not csv_files:
-        raise FileNotFoundError(f"No CSV file found in {raw_dir}")
+        raise FileNotFoundError(
+            f"No CSV file found in {raw_dir}. "
+            "Use --download flag to download the dataset, or ensure data is present in raw_dir."
+        )
     csv_file = csv_files[0]  # Use first CSV file found
+    logger.info(f"Using CSV file: {csv_file}")
 
     # Load and process data
     texts = []
@@ -103,10 +224,10 @@ def preprocess_data(
             filtered_texts.append(text)
             filtered_categories.append(cat)
 
-    print(
+    logger.info(
         f"Filtered dataset from {len(texts)} to {len(filtered_texts)} samples (keeping only top {num_categories} categories)"
     )
-    print(f"Top {num_categories} categories: {top_categories}")
+    logger.info(f"Top {num_categories} categories: {top_categories}")
 
     # Encode categories as integer labels (0 to num_categories-1)
     category_to_label = {cat: idx for idx, cat in enumerate(sorted(top_categories))}
@@ -148,11 +269,11 @@ def preprocess_data(
     with open(processed_dir / "category_mapping.json", "w", encoding="utf-8") as f:
         json.dump(category_to_label, f, ensure_ascii=False)
 
-    print(f"Processed data saved to {processed_dir}")
-    print(f"Training set size: {len(train_texts)}")
-    print(f"Validation set size: {len(val_texts)}")
-    print(f"Test set size: {len(test_texts)}")
-    print(f"Number of categories: {len(top_categories)}")
+    logger.info(f"Processed data saved to {processed_dir}")
+    logger.info(f"Training set size: {len(train_texts)}")
+    logger.info(f"Validation set size: {len(val_texts)}")
+    logger.info(f"Test set size: {len(test_texts)}")
+    logger.info(f"Number of categories: {len(top_categories)}")
 
 
 class ArXivDataset(torch.utils.data.Dataset):
@@ -303,5 +424,80 @@ def arxiv_dataset(
     return train_set, val_set, test_set
 
 
+# CLI app for both download and preprocess commands
+app = typer.Typer(help="ArXiv dataset download and preprocessing utilities")
+
+
+@app.command()
+def download(
+    raw_dir: str = typer.Option("data/raw", help="Path to raw data directory"),
+    force: bool = typer.Option(False, "--force", help="Force re-download even if data exists"),
+) -> None:
+    """Download ArXiv dataset from Kaggle.
+
+    Downloads the dataset and extracts it to the raw data directory.
+    Skips download if CSV files already exist (unless --force is used).
+
+    Examples:
+        # Download to default location (data/raw)
+        uv run src/pname/data.py download
+
+        # Download to custom location
+        uv run src/pname/data.py download --raw-dir /path/to/data/raw
+
+        # Force re-download
+        uv run src/pname/data.py download --force
+    """
+    download_data(raw_dir=raw_dir, force_download=force)
+
+
+@app.command()
+def preprocess(
+    raw_dir: str = typer.Argument("data/raw", help="Path to raw data directory"),
+    processed_dir: str = typer.Argument("data/processed", help="Path to processed data directory"),
+    train_split: float = typer.Option(0.7, help="Fraction of data to use for training"),
+    val_split: float = typer.Option(0.15, help="Fraction of data to use for validation"),
+    test_split: float = typer.Option(0.15, help="Fraction of data to use for testing"),
+    seed: int = typer.Option(42, help="Random seed for train/val/test split"),
+    num_categories: int = typer.Option(5, help="Number of categories to keep (top N most frequent)"),
+    download: bool = typer.Option(False, help="Download dataset if not present in raw_dir"),
+    force_download: bool = typer.Option(False, help="Force re-download even if data exists"),
+) -> None:
+    """Preprocess raw ArXiv data and save it to processed directory.
+
+    This is an alias for the preprocess_data function with a cleaner CLI interface.
+
+    Examples:
+        # Preprocess with default settings
+        uv run src/pname/data.py preprocess
+
+        # Preprocess with automatic download if data missing
+        uv run src/pname/data.py preprocess --download
+
+        # Preprocess with custom splits
+        uv run src/pname/data.py preprocess --train-split 0.8 --val-split 0.1 --test-split 0.1
+    """
+    preprocess_data(
+        raw_dir=raw_dir,
+        processed_dir=processed_dir,
+        train_split=train_split,
+        val_split=val_split,
+        test_split=test_split,
+        seed=seed,
+        num_categories=num_categories,
+        download=download,
+        force_download=force_download,
+    )
+
+
 if __name__ == "__main__":
-    typer.run(preprocess_data)
+    # Support both old-style (direct preprocess_data call) and new-style (app commands)
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] in ["download", "preprocess"]:
+        # New-style: use app commands
+        app()
+    else:
+        # Old-style: backward compatibility - call preprocess_data directly
+        # This allows: uv run src/pname/data.py data/raw data/processed
+        typer.run(preprocess_data)
