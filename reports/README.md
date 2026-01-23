@@ -334,6 +334,18 @@ Github's Caching is utilized to store the python packages from the uv.lock file,
 
 An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
+**description of two critical unit tests**
+
+ 1. `test_preprocess_data_creates_output_files` from `test_data.py` \
+The purpose of this test is to validate the data preprocessing pipeline that is the foundation for all subsequent machine learning tasks. It creates a temporary directory with a csv file that contains 4 sample research papers with the columns title, abstract, and category and runs preprocess_data(). It then verifies that the following artifacts exists; train_texts.json, train_labels.pt, test_texts.json, test_labels.pt, and category_mapping.json. \
+This test is critical because our model relies on these artifacts being present in order to function.
+
+2. `test_no_data_leakage` from `test_tfidf_pipeline.py` \
+The purpose of this test is to ensure that the tf-idf model doesn't leak validation/test data into its vocab learning. \
+It creates three seperate text datasets (6 training, 1 validation, and 1 test) and trains the model. It verifies that all three datasets produce the same number of features and that the predictions work on the validations and test sets. \
+This test is critical because data leakage can skew the model and destroy its performance in production. If this tests fails then we know that the model is unreliable.
+
+
 ## Running code and tracking experiments
 
 > In the following section we are interested in learning more about the experimental setup for running your code and
