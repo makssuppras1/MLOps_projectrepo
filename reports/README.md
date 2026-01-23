@@ -668,7 +668,7 @@ The "something special" in our implementation is the dedicated `/monitoring` end
 > Answer:
 
 All project GCP activites was performed on the GCP project groupe member s204634 created on Google Cloud and members s204598 and s204614 was then added as co-owners of the project to ensure full accessibility and control of the project in the cloud.
-Of the 50$ credidt awarded trough the course, 33% of them have been used at the end of the project (not counting the last project day), resulting in a cost of 11.67$ used on GCP services. 
+Of the 50$ credidt awarded trough the course, 33% of them have been used at the end of the project (not counting the last project day), resulting in a cost of 11.67$ used on GCP services.
 
 Looking at the forcasted cost, Google Cloud predicts a accumulated cost for January to be 26.74$, based on the current ussage for the prior perioed, amounting to 53.48% of the credits awarded. This increase in expected cost is due to the increase of services used in the later stages of the project.
 
@@ -717,7 +717,7 @@ This diagram shows how the project is structured from data collection all the wa
 
 *In the deployment stage*, the trained model is exposed through an inference API running on Cloud Run. Clients can send requests to this API and receive predictions in return.
 
-Finally, *the monitoring stage helps keep an eye on the system* after deployment. The API logs incoming requests, and these logs are used to check for data drift with tools like Evidently. Drift reports are generated and stored, which can signal when the model may need further investigation or retraining. 
+Finally, *the monitoring stage helps keep an eye on the system* after deployment. The API logs incoming requests, and these logs are used to check for data drift with tools like Evidently. Drift reports are generated and stored, which can signal when the model may need further investigation or retraining.
 
 Overall, the pipeline is designed to be practical, reproducible, and reasonably easy to maintain.
 
@@ -751,4 +751,6 @@ By far the biggest challenge with this project was interacting with Google Cloud
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
-Here we will writre our contribution.
+The project was developed in collaboration with unclear responsibilities, we developed everything ad hoc in a hybrid development styled collaboration. Maks, s204614, KurtRavn contributed with core machine learning training infrastructure, data pipelines, model implementations, API development, Docker-based deployment, CI/CD workflows, monitoring components, and DevOps tooling. Oliver, s204634, OliverKviat, contributed to the testing infrastructure and project documentation, authoring a major part of unit tests, the main project report as well as the setup of everything GCP related. Kasper, s204598, KasperKL1 contributed to model implementations, the TF-IDF training pipeline, extensive testing (including integration, monitoring, and backward compatibility tests), configuration files, and CI/CD-related files.
+
+The following generative ai tools were used for development assistance throughout this project: ChatGPT, Cursor.ai, and copilot. All AI-generated output was reviewed and adapted by the students, and all design decisions and implementations were entirely student-driven.
