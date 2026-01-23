@@ -270,10 +270,36 @@ def docker_build_and_push_gcp(
     region: str = "europe-west1",
     project_id: str = "dtumlops-484310",
     registry: str = "container-registry",
+    multi_platform: bool = True,
 ) -> None:
-    """Build and push Docker image to GCP in one command."""
-    docker_build_gcp(ctx, dockerfile, tag)
-    docker_push_gcp(ctx, tag, region, project_id, registry)
+    """Build and push Docker image to GCP in one command.
+
+    Args:
+        dockerfile: Path to Dockerfile
+        tag: Image tag
+        region: GCP region
+        project_id: GCP project ID
+        registry: GCP Artifact Registry name
+        multi_platform: If True, build for both linux/amd64 and linux/arm64 (default: True)
+    """
+    image_uri = f"{region}-docker.pkg.dev/{project_id}/{registry}/{tag}"
+
+    if multi_platform:
+        # Multi-platform build: build for both architectures and push directly
+        # Note: Multi-platform images cannot use --load, must push to registry
+        platforms = "linux/amd64,linux/arm64"
+        print(f"Building multi-platform image for {platforms}...")
+        print("This ensures the image works on both ARM64 (Mac) and AMD64 (Linux/GCP) machines.")
+        ctx.run(
+            f"docker buildx build --platform {platforms} -f {dockerfile} -t {image_uri} . --push",
+            echo=True,
+            pty=not WINDOWS,
+        )
+        print(f"✓ Built and pushed multi-platform image: {image_uri}")
+    else:
+        # Single platform build: build for AMD64 (GCP standard) and push
+        docker_build_gcp(ctx, dockerfile, tag, multi_platform=False)
+        docker_push_gcp(ctx, tag, region, project_id, registry)
 
 
 @task
@@ -443,10 +469,12 @@ def deploy_api(
     project_id: str = "dtumlops-484310",
     image_name: str = "inference-api",
     allow_unauthenticated: bool = True,
+    multi_platform: bool = True,
 ) -> None:
     """Deploy API to Cloud Run.
 
-    Builds the API Docker image, pushes it to Artifact Registry, and deploys to Cloud Run.
+    Builds the API Docker image (multi-platform by default), pushes it to Artifact Registry,
+    and deploys to Cloud Run. Multi-platform builds ensure the image works on any architecture.
 
     Args:
         service_name: Name of the Cloud Run service.
@@ -454,17 +482,25 @@ def deploy_api(
         project_id: GCP project ID.
         image_name: Name of the Docker image.
         allow_unauthenticated: If True, allows unauthenticated access to the service.
+        multi_platform: If True, build for both linux/amd64 and linux/arm64 (default: True).
+                       This ensures the image works on any architecture Cloud Run uses.
     """
-    # Step 1: Build and push Docker image
-    ctx.run("echo 'Step 1: Building and pushing API Docker image...'", echo=True)
+    # Step 1: Build and push Docker image (multi-platform by default)
+    ctx.run("echo 'Step 1: Building and pushing API Docker image (multi-platform)...'", echo=True)
     docker_build_and_push_gcp(
-        ctx, "dockerfiles/api.dockerfile", f"{image_name}:latest", region, project_id, "container-registry"
+        ctx,
+        "dockerfiles/api.dockerfile",
+        f"{image_name}:latest",
+        region,
+        project_id,
+        "container-registry",
+        multi_platform=multi_platform,
     )
 
     # Step 2: Deploy to Cloud Run
     ctx.run(f"echo 'Step 2: Deploying to Cloud Run service: {service_name}...'", echo=True)
 
-    image_url = f"europe-west1-docker.pkg.dev/{project_id}/container-registry/{image_name}:latest"
+    image_url = f"{region}-docker.pkg.dev/{project_id}/container-registry/{image_name}:latest"
 
     deploy_cmd = (
         f"gcloud run deploy {service_name} "
