@@ -290,7 +290,6 @@ Notice that there are two model and train coverages because of the legacy `model
 We made use of both branches and pull requests (PRs) in our project. Rather than having individual branches per group member, we implemented **feature-based branches** where each branch corresponded to a specific feature or functionality being developed. This approach was chosen because we implemented co-coding practices where multiple team members could work together on the same features. We used pull requests to merge these feature branches back into the main branch, which allowed us to keep the main branch as up-to-date as possible while maintaining smaller, focused changes per PR.
 Additionally, we set up our GitHub repository to require a **minimum of 2 group members to approve a PR** before it could be merged, following the methods taught in module 17 of the course material. This workflow helped us maintain better version control by ensuring each PR contained a cohesive set of changes related to a specific feature, making code reviews more manageable and reducing conflicts during merges.
 
-
 ### Question 10
 
 > **Did you use DVC for managing data in your project? If yes, then how did it improve your project to have version**
