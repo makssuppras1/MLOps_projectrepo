@@ -375,13 +375,13 @@ uv run src/pname/train.py experiment=fast
 >
 > Answer:
 
-We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: 
+We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens:
 
 Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (*PyTorch, NumPy, CUDA*) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
 
-To reproduce an experiment one would have to run the following in the terminal: 
+To reproduce an experiment one would have to run the following in the terminal:
 1) sync dependencies with `uv sync`,
-2) fetch versioned data with `dvc pull`, and 
+2) fetch versioned data with `dvc pull`, and
 3) run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
 
 ### Question 14
@@ -688,7 +688,7 @@ For system monitoring, we would use **Prometheus metrics** to track API request 
 >
 > Answer:
 
---- question 30 fill here ---
+By far the biggest challenge with this project was interacting with google cloud. The complications rose from having to build and upload a multiplatform docker image that the cloud would then use to run our model. Because our model requires a lot of compute to run, we had to run it on the cloud, this meant that testing and experimenting was also mostly done in the cloud. Because of this reliance on the cloud, it meant that any issues with the build/model took 2-3 minutes before an error was returned, greatly slowing down the development process. Working with a remote system that is obsqured from our own environment debugging becomes a lot more difficult since we need to know exactly how our own environment interacts with the cloud in order to pinpoint where the bugs occur. Furthermore, when an error occurs in the cloud or in the build process of the docker image, it does not return an error statement. This has made it very troublesome to do effective debugging since we don't know exactly what the cause of the error was, forcing us to do a lot of guesswork.
 
 ### Question 31
 
