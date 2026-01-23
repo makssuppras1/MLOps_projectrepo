@@ -655,7 +655,12 @@ The "something special" in our implementation is the dedicated `/monitoring` end
 >
 > Answer:
 
---- question 27 fill here ---
+All project GCP activites was performed on the GCP project groupe member s204634 created on Google Cloud and members s204598 and s204614 was then added as co-owners of the project to ensure full accessibility and control of the project in the cloud.
+Of the 50$ credidt awarded trough the course, 33% of them have been used at the end of the project (not counting the last project day), resulting in a cost of 11.67$ used on GCP services. 
+
+Looking at the forcasted cost, Google Cloud predicts a accumulated cost for January to be 26.74$, based on the current ussage for the prior perioed, amounting to 53.48% of the credits awarded. This increase in expected cost is due to the increase of services used in the later stages of the project.
+
+For us the service which proved the most exspensive was the *Compute Engine*, however, after migrating to *Vertex AI*, this service has sicnificantly taken over the cost of the later usage, but only scores as the second larges expens post.
 
 ### Question 28
 
