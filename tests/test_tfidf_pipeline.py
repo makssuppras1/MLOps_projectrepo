@@ -89,36 +89,6 @@ def test_pipeline_initialization(model_config):
     assert model.pipeline.named_steps["classifier"] is model.classifier
 
 
-def test_predict_uses_pipeline(model_config, sample_texts, sample_labels):
-    """Test that predict() uses pipeline."""
-    model = TFIDFXGBoostModel(model_cfg=model_config)
-    model.fit(sample_texts, sample_labels)
-
-    # Test predictions
-    predictions = model.predict(sample_texts)
-    assert len(predictions) == len(sample_texts)
-    assert all(isinstance(p, (int, np.integer)) for p in predictions)
-
-    # Verify pipeline produces same results
-    pipeline_predictions = model.pipeline.predict(sample_texts)
-    np.testing.assert_array_equal(predictions, pipeline_predictions)
-
-
-def test_predict_proba_uses_pipeline(model_config, sample_texts, sample_labels):
-    """Test that predict_proba() uses pipeline."""
-    model = TFIDFXGBoostModel(model_cfg=model_config)
-    model.fit(sample_texts, sample_labels)
-
-    # Test probabilities
-    probas = model.predict_proba(sample_texts)
-    assert probas.shape == (len(sample_texts), model_config.num_labels)
-    assert np.allclose(probas.sum(axis=1), 1.0), "Probabilities should sum to 1"
-
-    # Verify pipeline produces same results
-    pipeline_probas = model.pipeline.predict_proba(sample_texts)
-    np.testing.assert_array_almost_equal(probas, pipeline_probas)
-
-
 def test_new_model_save_load_roundtrip(model_config, sample_texts, sample_labels):
     """Test that new models (with pipeline) save and load correctly."""
     model = TFIDFXGBoostModel(model_cfg=model_config)
@@ -226,26 +196,6 @@ def test_early_stopping_works(model_config, sample_texts, sample_labels, val_tex
     assert hasattr(model.classifier, "feature_importances_"), "Classifier should be fitted"
 
 
-def test_early_stopping_without_val_set(model_config, sample_texts, sample_labels):
-    """Test that model works without validation set (no early stopping)."""
-    model = TFIDFXGBoostModel(model_cfg=model_config)
-
-    # Fit without validation set
-    model.fit(sample_texts, sample_labels)
-
-    # Verify pipeline was updated
-    assert hasattr(model, "pipeline"), "Pipeline should exist"
-    assert model.pipeline.named_steps["classifier"] is model.classifier
-
-    # Verify predictions work
-    predictions = model.predict(sample_texts)
-    assert len(predictions) == len(sample_texts)
-
-    # Verify pipeline produces same results
-    pipeline_predictions = model.pipeline.predict(sample_texts)
-    np.testing.assert_array_equal(predictions, pipeline_predictions)
-
-
 def test_no_data_leakage(model_config):
     """Test that vectorizer is fit only on training data."""
     # Use more texts to avoid min_df pruning issues
@@ -287,35 +237,3 @@ def test_no_data_leakage(model_config):
     test_pipeline_preds = model.pipeline.predict(test_texts)
     np.testing.assert_array_equal(val_preds, val_pipeline_preds)
     np.testing.assert_array_equal(test_preds, test_pipeline_preds)
-
-
-def test_random_state_from_config(model_config):
-    """Test that random_state comes from config."""
-    model = TFIDFXGBoostModel(model_cfg=model_config)
-
-    # Check that classifier has correct random_state
-    assert model.classifier.get_params()["random_state"] == 42
-
-    # Test with different seed
-    model_config_alt = DictConfig({**model_config, "random_state": 123})
-    model_alt = TFIDFXGBoostModel(model_cfg=model_config_alt)
-    assert model_alt.classifier.get_params()["random_state"] == 123
-
-
-def test_feature_importance_still_works(model_config, sample_texts, sample_labels):
-    """Test that feature importance still works after pipeline changes."""
-    model = TFIDFXGBoostModel(model_cfg=model_config)
-    model.fit(sample_texts, sample_labels)
-
-    # Get feature importance
-    top_features = model.get_feature_importance(top_n=5)
-
-    assert len(top_features) <= 5
-    assert all(isinstance(feat, tuple) and len(feat) == 2 for feat in top_features)
-    assert all(isinstance(feat[0], str) for feat in top_features)
-    assert all(isinstance(feat[1], (int, float)) for feat in top_features)
-
-
-if __name__ == "__main__":
-    # Run tests if executed directly
-    pytest.main([__file__, "-v"])

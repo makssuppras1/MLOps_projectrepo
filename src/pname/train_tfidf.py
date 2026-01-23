@@ -167,6 +167,14 @@ def train(cfg: DictConfig) -> None:
     if len(val_texts) > 0:
         logger.info("Evaluating on validation set...")
         val_preds = model.predict(val_texts)
+        # Normalize to label predictions if classifier returns probability matrix
+        try:
+            import numpy as _np
+
+            if hasattr(val_preds, "ndim") and getattr(val_preds, "ndim", 1) == 2:
+                val_preds = _np.argmax(val_preds, axis=1)
+        except Exception:
+            pass
         val_accuracy = accuracy_score(val_labels, val_preds)
         logger.info(f"Validation accuracy: {val_accuracy:.4f}")
 
@@ -176,6 +184,14 @@ def train(cfg: DictConfig) -> None:
     # Evaluate on test set
     logger.info("Evaluating on test set...")
     test_preds = model.predict(test_texts)
+    # Normalize to label predictions if classifier returns probability matrix
+    try:
+        import numpy as _np
+
+        if hasattr(test_preds, "ndim") and getattr(test_preds, "ndim", 1) == 2:
+            test_preds = _np.argmax(test_preds, axis=1)
+    except Exception:
+        pass
     test_accuracy = accuracy_score(test_labels, test_preds)
     logger.info(f"Test accuracy: {test_accuracy:.4f}")
 
