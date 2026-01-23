@@ -566,9 +566,11 @@ This setup allows us to run scalable training jobs in the europe-west1 region wi
 >
 > Answer:
 
-We did manage to write an API for our model. We used **FastAPI** to create the *"ArXiv Paper Classifier API"* located in [app/main.py](app/main.py). The API includes **four endpoints**: GET `/` (root), GET `/health` (status check), POST `/load` (model loading), and POST `/predict` (classification). We implemented **dual model support** for both PyTorch (DistilBERT) and TF-IDF + XGBoost models in the same API.
+We successfully built a functional API using **FastAPI**, which we organized into a dedicated `app/` folder to keep the code clean and separate from our training logic. While the API handles standard tasks like classification through a `/predict` endpoint, we added several "special" features to make it more robust for a real-world MLOps setting.
 
-We also added **structured request/response models** using Pydantic with detailed prediction responses including class probabilities, confidence scores, and class names. The API includes **error handling** with proper HTTP status codes and **automatic model discovery** on startup. We containerized it with [api.dockerfile](dockerfiles/api.dockerfile) and created **integration tests** in [test_apis.py](tests/integrationtests/test_apis.py) plus **load testing infrastructure** using Locust for performance validation.
+One of the coolest things we implemented was dual model support, allowing the same API to switch between our DistilBERT and XGBoost models. To go beyond a basic tutorial, we also built a request logging pipeline that automatically saves prediction data to Google Cloud Storage. This is a critical step for monitoring because it allows us to track how the model performs after deployment.
+
+We also focused on reliability by using **Pydantic** to strictly validate incoming data and adding a `/monitoring` endpoint that serves **Evidently AI** reports to check for data drift. The API is fully containerized and was tested using **Locust** to make sure it wouldn't crash if multiple people tried to use it at once.
 
 ### Question 24
 
@@ -584,16 +586,22 @@ We also added **structured request/response models** using Pydantic with detaile
 >
 > Answer:
 
-For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) and a production [Dockerfile](Dockerfile) for cloud deployment.
+For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) for both local and cloud deployment.
 
-We have **Docker images** built and pushed to Google Artifact Registry via Cloud Build (as shown in registry and build screenshots). To invoke the service locally, a user would call:
+Beyond basic containerization, we implemented **full Cloud Run deployment** with automated CI/CD. Our [deploy-api.yaml](.github/workflows/deploy-api.yaml) workflow automatically builds and deploys the API to Google Cloud Run when changes are pushed to main. The deployment is also available via Invoke: `uv run invoke deploy-api-to-cloud-run`.
+
+**Cloud Run service configuration**: 2Gi memory, 2 CPU cores, 0-10 auto-scaling instances in `europe-west1` region. To invoke the **production service**, users call:
 ```bash
-curl -X POST "http://localhost:8000/predict" \
+# Get service URL first
+uv run invoke get-api-url
+
+# Then invoke production endpoint (*.run.app URL)
+curl -X POST "https://arxiv-classifier-api-[hash]-[region].run.app/predict" \
   -H "Content-Type: application/json" \
   -d '{"text": "Quantum computing and machine learning applications"}'
 ```
 
-Health checks are available at `/health` and model loading via `/load` endpoint.
+The API supports both local testing (`localhost:8000`) and production Cloud Run deployment with identical endpoints.
 
 ### Question 25
 
@@ -608,9 +616,11 @@ Health checks are available at `/health` and model loading via `/load` endpoint.
 >
 > Answer:
 
-We implemented unit testing for our FastAPI application using **pytest** with **FastAPI TestClient**. We created integration tests in [test_apis.py](tests/integrationtests/test_apis.py) that cover all API endpoints: root endpoint (GET /), health endpoint (GET /health), and prediction endpoint (POST /predict) with various input scenarios including valid predictions, missing fields, wrong data types, and empty strings. The tests handle both model-loaded and model-not-loaded states (503 status codes). We validated this by running `uv run pytest tests/integrationtests/test_apis.py -v` which showed **all 6 tests passed successfully** in 4.13 seconds, confirming proper error handling, response structure, and HTTP status codes.
+To ensure our API was both correct and reliable, we used a two-tiered testing approach. For unit and integration testing, we used **Pytest** and the FastAPI TestClient. We wrote six specific tests in `test_apis.py` that verify everything from basic health checks to complex edge cases, such as how the API handles empty strings or missing fields. These tests are fully automated in our GitHub Actions CI/CD pipeline, running across *Ubuntu, Windows*, and *macOS* to ensure a 70% coverage threshold is met before any code is merged.
 
-For load testing, we implemented **Locust** testing infrastructure in [locustfile.py](tests/performancetests/locustfile.py) that simulates realistic user behavior with weighted task distribution: prediction requests (weight 5), health checks (weight 3), and root endpoint access (weight 1). We validated the complete load testing process by first starting the API server with `uv run app/main.py --host 0.0.0.0 --port 8000 &`, confirming it responded correctly with `curl http://localhost:8000/health` (returning healthy status with TF-IDF model loaded), then launching Locust with `export MYENDPOINT=http://localhost:8000 && uv run locust -f tests/performancetests/locustfile.py --host=http://localhost:8000`. The Locust web interface successfully started on http://0.0.0.0:8089, providing real-time metrics for requests per second, response times, and failure rates with configurable user count and spawn rate settings.
+For load testing, we implemented **Locust** to simulate how the server handles traffic. We designed a weighted distribution where 55% of simulated users hit the `/predict` endpoint, while the rest perform health checks.
+
+By running Locust against our local Docker container, we confirmed the infrastructure could provide real-time metrics on response latency and failure rates. While the unit tests are automated, we currently perform load testing as a manual validation step before major deployments. This process proved that our FastAPI setup, combined with uv for fast dependency loading, can effectively manage multiple concurrent user requests without crashing.
 
 ### Question 26
 
@@ -625,9 +635,11 @@ For load testing, we implemented **Locust** testing infrastructure in [locustfil
 >
 > Answer:
 
-We did not manage to implement monitoring. Our current static arXiv scientific dataset would not experience data drift since it's not updated. However, if our scientific paper classification system were connected to a live arXiv API where new papers are published daily, monitoring would become critical for application longevity. We would implement monitoring using **Evidently framework** to detect **data drift** when new scientific domains emerge, writing styles evolve, or paper formats change compared to our training data. This would be particularly important as scientific fields rapidly advance and new terminology appears.
+We successfully moved beyond a theoretical plan to implement a functional, production-ready monitoring system using the **Evidently** framework. Our approach focuses on both data drift detection and system performance tracking to ensure the longevity of our ArXiv classifier.
 
-For system monitoring, we would use **Prometheus metrics** to track API request patterns, classification response times, and prediction confidence distributions. We would monitor for **concept drift** where the relationship between paper content and categories shifts over time, and **target drift** where the distribution of paper categories changes (e.g., sudden increase in AI/ML papers). Alert systems would notify us when drift scores exceed thresholds, triggering model retraining workflows to maintain classification accuracy as the scientific landscape evolves. This monitoring infrastructure would ensure our paper classification system adapts to the dynamic nature of academic publishing.
+To make this possible, we built a production-grade logging pipeline that captures every API request—including text features, predicted classes, confidence scores, and latency — and flushes them to GCS. We then developed a `drift_monitor.py` module that compares this live data against our `reference_data.parquet` baseline.
+
+The "something special" in our implementation is the dedicated `/monitoring` endpoint in our FastAPI application. This endpoint generates and serves live Evidently HTML reports in real-time, allowing us to visualize shifts in the scientific landscape, such as the emergence of new terminology. By tracking these metrics, we can identify when the model's environment has changed enough to require a retraining workflow, ensuring our classification remains accurate even as academic publishing evolves.
 
 ## Overall discussion of project
 
