@@ -1,0 +1,69 @@
+{
+  "log_schema": {
+    "description": "Schema for API request/response logs stored in GCS",
+    "format": "jsonl",
+    "storage_location": "gs://mlops_project_data_bucket1-europe-west1/monitoring/api_logs/",
+    "fields": [
+      {
+        "name": "timestamp",
+        "type": "string",
+        "format": "ISO 8601",
+        "description": "Request timestamp in ISO format"
+      },
+      {
+        "name": "request_id",
+        "type": "string",
+        "format": "UUID",
+        "description": "Unique request identifier (from X-Request-ID header or generated UUID)"
+      },
+      {
+        "name": "text_length",
+        "type": "integer",
+        "description": "Character count of input text"
+      },
+      {
+        "name": "word_count",
+        "type": "integer",
+        "description": "Number of words in input text"
+      },
+      {
+        "name": "predicted_class",
+        "type": "integer",
+        "description": "Predicted class index (0-4)"
+      },
+      {
+        "name": "confidence",
+        "type": "float",
+        "description": "Confidence score (max probability)"
+      },
+      {
+        "name": "probabilities",
+        "type": "array",
+        "items": {
+          "type": "float"
+        },
+        "description": "Class probabilities for all classes"
+      },
+      {
+        "name": "latency_ms",
+        "type": "float",
+        "description": "Request latency in milliseconds"
+      }
+    ],
+    "privacy_notes": [
+      "Full input text is NOT logged to avoid PII and reduce storage costs",
+      "Only derived features (text_length, word_count) are logged",
+      "To track specific texts, use request_id to correlate with application logs"
+    ],
+    "example_record": {
+      "timestamp": "2026-01-23T10:30:45.123456",
+      "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "text_length": 245,
+      "word_count": 38,
+      "predicted_class": 2,
+      "confidence": 0.87,
+      "probabilities": [0.05, 0.08, 0.87, 0.00, 0.00],
+      "latency_ms": 45.2
+    }
+  }
+}

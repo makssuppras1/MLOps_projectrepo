@@ -2,6 +2,8 @@
 
 import json
 import os
+import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -9,13 +11,22 @@ from typing import Optional
 import torch
 import typer
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from loguru import logger
 from pydantic import BaseModel
 from transformers import DistilBertTokenizer
 
 from pname.model import MyAwesomeModel
+
+# GCS logging support
+try:
+    from google.cloud import storage
+
+    GCS_AVAILABLE = True
+except ImportError:
+    GCS_AVAILABLE = False
+    logger.warning("google-cloud-storage not available. GCS logging disabled.")
 
 try:
     from pname.model_tfidf import TFIDFXGBoostModel
@@ -33,9 +44,18 @@ tokenizer: Optional[DistilBertTokenizer] = None
 model_type: Optional[str] = None  # "pytorch" or "tfidf"
 class_names: Optional[dict[int, str]] = None  # Mapping of class index to category name
 
-# Request logging for drift monitoring (CSV format)
+# Request logging for drift monitoring
 REQUEST_LOG_PATH = Path(os.getenv("REQUEST_LOG_PATH", "monitoring/api_requests.csv"))
 REQUEST_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+# GCS logging configuration
+GCS_BUCKET_NAME = os.getenv("GCS_LOG_BUCKET", "mlops_project_data_bucket1-europe-west1")
+GCS_LOG_PREFIX = os.getenv("GCS_LOG_PREFIX", "monitoring/api_logs")
+ENABLE_GCS_LOGGING = os.getenv("ENABLE_GCS_LOGGING", "true").lower() == "true"
+
+# In-memory buffer for batch GCS uploads
+_log_buffer: list[dict] = []
+_log_buffer_size = int(os.getenv("LOG_BUFFER_SIZE", "10"))  # Upload every N requests
 
 app = FastAPI(
     title="ArXiv Paper Classifier API",
@@ -111,6 +131,107 @@ def load_model(model_path: str, model_name: str = "distilbert-base-uncased") -> 
         logger.info("PyTorch model and tokenizer loaded successfully")
 
 
+def log_to_gcs(log_record: dict) -> None:
+    """Log request to GCS bucket (durable storage for Cloud Run).
+
+    Args:
+        log_record: Dictionary with request/response data.
+    """
+    if not GCS_AVAILABLE or not ENABLE_GCS_LOGGING:
+        return
+
+    try:
+        global _log_buffer
+        _log_buffer.append(log_record)
+
+        # Upload when buffer is full
+        if len(_log_buffer) >= _log_buffer_size:
+            _flush_log_buffer()
+    except Exception as e:
+        logger.warning(f"Failed to log to GCS buffer: {e}")
+
+
+def _flush_log_buffer() -> None:
+    """Flush log buffer to GCS."""
+    global _log_buffer
+    if not _log_buffer or not GCS_AVAILABLE:
+        return
+
+    try:
+        client = storage.Client()
+        bucket = client.bucket(GCS_BUCKET_NAME)
+
+        # Create JSONL content
+        jsonl_content = "\n".join(json.dumps(record) for record in _log_buffer)
+
+        # Upload to GCS with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d/%H%M%S")
+        blob_name = f"{GCS_LOG_PREFIX}/{timestamp}_batch_{uuid.uuid4().hex[:8]}.jsonl"
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(jsonl_content, content_type="application/jsonl")
+
+        logger.debug(f"Uploaded {len(_log_buffer)} log records to gs://{GCS_BUCKET_NAME}/{blob_name}")
+        _log_buffer = []
+    except Exception as e:
+        logger.warning(f"Failed to upload logs to GCS: {e}")
+        # Keep buffer for retry on next request
+
+
+def log_request_response(
+    request_id: str,
+    request_text: str,
+    predicted_class: int,
+    confidence: float,
+    probabilities: list[float],
+    latency_ms: float,
+) -> None:
+    """Log request and response data for monitoring.
+
+    Logs to both local CSV (for compatibility) and GCS (for durability).
+
+    Args:
+        request_id: Unique request identifier.
+        request_text: Input text.
+        predicted_class: Predicted class index.
+        confidence: Confidence score.
+        probabilities: Class probabilities.
+        latency_ms: Request latency in milliseconds.
+    """
+    timestamp = datetime.now().isoformat()
+    text_len = len(request_text)
+    word_count = len(request_text.split())
+
+    # Local CSV logging (for backward compatibility)
+    try:
+        import csv
+
+        log_exists = REQUEST_LOG_PATH.exists()
+        with open(REQUEST_LOG_PATH, "a", encoding="utf-8", newline="") as f:
+            writer = csv.writer(f)
+            if not log_exists:
+                writer.writerow(
+                    ["time", "request_id", "text_length", "word_count", "predicted_class", "confidence", "latency_ms"]
+                )
+            writer.writerow([timestamp, request_id, text_len, word_count, predicted_class, confidence, latency_ms])
+    except Exception as e:
+        logger.warning(f"Failed to log to CSV: {e}")
+
+    # GCS JSONL logging (structured, durable)
+    log_record = {
+        "timestamp": timestamp,
+        "request_id": request_id,
+        "text_length": text_len,
+        "word_count": word_count,
+        "predicted_class": int(predicted_class),
+        "confidence": float(confidence),
+        "probabilities": [float(p) for p in probabilities],
+        "latency_ms": float(latency_ms),
+        # Note: Not logging full text to avoid PII/storage costs
+        # Can add hashed text if needed: "text_hash": hashlib.sha256(request_text.encode()).hexdigest()
+    }
+    log_to_gcs(log_record)
+
+
 def load_class_names() -> Optional[dict[int, str]]:
     """Load class name mapping from processed data.
 
@@ -145,6 +266,12 @@ def load_class_names() -> Optional[dict[int, str]]:
     # Fallback: use generic class names if mapping not found
     logger.info("Category mapping not found, using generic class names")
     return {i: f"Class {i}" for i in range(5)}
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Flush remaining logs to GCS on shutdown."""
+    _flush_log_buffer()
 
 
 @app.on_event("startup")
@@ -275,13 +402,14 @@ async def load_model_endpoint(model_path: str) -> dict[str, str]:
 
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(request: PredictionRequest) -> PredictionResponse:
+async def predict(request: PredictionRequest, http_request: Request) -> PredictionResponse:
     """Predict the class of a text.
 
     Supports both PyTorch (DistilBERT) and TF-IDF + XGBoost models.
 
     Args:
         request: Prediction request containing the text to classify.
+        http_request: FastAPI request object for extracting request ID.
 
     Returns:
         Prediction response with class, probabilities, and confidence.
@@ -292,7 +420,9 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded. Please load a model first using /load endpoint.")
 
-    # Log will be done after prediction to include outputs
+    # Generate request ID (use X-Request-ID header if present, otherwise generate UUID)
+    request_id = http_request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    start_time = time.time()
 
     try:
         if model_type == "tfidf":
@@ -323,20 +453,16 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
                 confidence=confidence,
             )
 
-            # Log input-output data for monitoring
-            try:
-                import csv
-
-                log_exists = REQUEST_LOG_PATH.exists()
-                with open(REQUEST_LOG_PATH, "a", encoding="utf-8", newline="") as f:
-                    writer = csv.writer(f)
-                    if not log_exists:
-                        writer.writerow(["time", "text_length", "word_count", "predicted_class", "confidence"])
-                    text_len = len(request.text)
-                    word_count = len(request.text.split())
-                    writer.writerow([datetime.now().isoformat(), text_len, word_count, pred_class, confidence])
-            except Exception as e:
-                logger.warning(f"Failed to log for monitoring: {e}")
+            # Log input-output data for monitoring (with latency)
+            latency_ms = (time.time() - start_time) * 1000
+            log_request_response(
+                request_id=request_id,
+                request_text=request.text,
+                predicted_class=pred_class,
+                confidence=confidence,
+                probabilities=probs_list,
+                latency_ms=latency_ms,
+            )
 
             return response
         else:
@@ -388,20 +514,16 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
                 confidence=confidence,
             )
 
-            # Log input-output data for monitoring
-            try:
-                import csv
-
-                log_exists = REQUEST_LOG_PATH.exists()
-                with open(REQUEST_LOG_PATH, "a", encoding="utf-8", newline="") as f:
-                    writer = csv.writer(f)
-                    if not log_exists:
-                        writer.writerow(["time", "text_length", "word_count", "predicted_class", "confidence"])
-                    text_len = len(request.text)
-                    word_count = len(request.text.split())
-                    writer.writerow([datetime.now().isoformat(), text_len, word_count, pred_class, confidence])
-            except Exception as e:
-                logger.warning(f"Failed to log for monitoring: {e}")
+            # Log input-output data for monitoring (with latency)
+            latency_ms = (time.time() - start_time) * 1000
+            log_request_response(
+                request_id=request_id,
+                request_text=request.text,
+                predicted_class=pred_class,
+                confidence=confidence,
+                probabilities=probs_list,
+                latency_ms=latency_ms,
+            )
 
             return response
     except Exception as e:

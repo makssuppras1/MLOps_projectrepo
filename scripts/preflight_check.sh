@@ -29,12 +29,13 @@ echo ""
 # 1. Platform Check
 echo "1. PLATFORM ARCHITECTURE"
 if [[ $(uname -m) == "arm64" ]]; then
-    echo "   ⚠️  Detected ARM64 (Mac). Must build for linux/amd64"
+    echo "   ⚠️  Detected ARM64 (Mac). Building for linux/amd64 (required for GCP)"
     echo "   Building with correct platform..."
     docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t ${IMAGE_NAME} . --load
     echo "   ✓ Image built for linux/amd64"
+    echo "   Note: For local testing, consider building ARM64: docker buildx build --platform linux/arm64 ..."
 else
-    echo "   ✓ Architecture OK"
+    echo "   ✓ Architecture OK (AMD64)"
     docker build -f dockerfiles/train.dockerfile -t ${IMAGE_NAME} .
 fi
 echo ""
