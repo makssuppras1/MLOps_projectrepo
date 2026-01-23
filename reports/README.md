@@ -214,7 +214,7 @@ We deviated from the template by adding several project-specific files: `tasks.p
 
 We used **ruff** for linting and **black + isort** for formatting, configured through pre-commit hooks in `.pre-commit-config.yaml` with 120-character lines. We also used **type annotations** for typing and **docstrings** for documentation in core modules like `preprocess_data`, `ArXivDataset`, and `MyAwesomeModel`. Documentation is maintained with **MkDocs** and operational guides (LOGGING_GUIDE, profiling_guide).
 
-In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding. 
+In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding.
 In general, using these rules for code quality and formatting enables faster and better understanding on code functionality without having to spend time understanding the code format.
 
 ## Version control
@@ -375,7 +375,17 @@ To reproduce an experiment one would have to: sync dependencies with `uv sync`, 
 >
 > Answer:
 
---- question 14 fill here ---
+Since our full data set is very large and takes a long time to train, we ran a sweep in wandb with a small subset of the data (5000 articles). The purpose of this sweep was to come closer to finding and optimal set of hyperparameters that we could then train the full model on, the sweep config can be found in configs/experiment/sweep_config.yaml. The result of the sweep can be seen in the figure below.
+
+![wandb_sweep_summary](figures/wandb_sweep_summary.png)
+
+A rudementary inspection of the features and their repective importance can be seen in the figure below. It reveals that learning rate, subsample, and number of estimators are the most important for accuracy, with the subsample being heavy negatively correlated with accuracy.
+
+![wandb_scatterplot](figures/feature_importance.png)
+
+The best model (shown in the figure below), had the following config and is what we will be using to train our model on the full dataset. The model had a test accuracy of 0.77, which is unfortunately not very good. It is interesting to note that it is extremely poor at predicting class_4, the most likely explanation being that it never predicts class_4 and that class_4 making up 18% of the test set
+
+![wandb_scatterplot](figures/bestModel-config-and-summary.png)
 
 ### Question 15
 
