@@ -19,7 +19,7 @@ We will start with the [arXiv Scientific Research Papers Dataset](https://www.ka
 # Initialize DVC (if not already done)
 dvc init
 # Configure remote storage (GCS)
-dvc remote add -d myremote gs://your-bucket-name/dvc-storage
+dvc remote add -d myremote gs://mlops_project_data_bucket1-europe-west1
 ```
 
 **Track Data Files:**
@@ -123,7 +123,8 @@ The directory structure of the project looks like this:
 ├── dockerfiles/              # Dockerfiles
 │   ├── api.dockerfile
 │   ├── evaluate.dockerfile
-│   └── train.dockerfile
+│   ├── train.dockerfile
+│   └── train_tfidf.dockerfile
 ├── Dockerfile                 # Root Dockerfile for API (production)
 ├── docs/                     # Documentation
 │   ├── INVOKE_COMMANDS.md
@@ -236,9 +237,29 @@ uv run src/pname/train.py --lr 0.001 --batch-size 64 --epochs 10
 # Train TF-IDF model with default config
 uv run src/pname/train_tfidf.py
 
-# Train with custom config
+# Train with custom config (using training.epochs - maps to model.n_estimators)
 uv run src/pname/train_tfidf.py --config-name=config_tfidf training.epochs=10
+
+# Override config values without editing files (recommended for quick changes)
+uv run src/pname/train_tfidf.py --config-name=config_tfidf \
+  model.max_features=10000 \
+  model.max_depth=8 \
+  training.epochs=10
+
+# Or override model.n_estimators directly (number of boosting rounds)
+uv run src/pname/train_tfidf.py --config-name=config_tfidf model.n_estimators=10
+
+# Override multiple values at once
+uv run src/pname/train_tfidf.py --config-name=config_tfidf \
+  model.max_features=10000 \
+  model.learning_rate=0.05 \
+  model.max_depth=12 \
+  training.epochs=20
 ```
+
+**Note:** The `training.epochs` parameter is supported for compatibility with the PyTorch training script. It maps to `model.n_estimators` (the number of XGBoost boosting rounds). You can use either `training.epochs` or `model.n_estimators` - both work the same way.
+
+**💡 Tip:** You can override any config value via Hydra CLI using `key=value` syntax. This is faster than editing config files and rebuilding Docker images. For example: `model.max_features=10000` overrides the value in `configs/model_tfidf.yaml`.
 
 **Available training parameters (PyTorch):**
 
@@ -449,6 +470,19 @@ uv run invoke stream-logs --job-id=<job_id>
 
 ### Docker Build and Run
 
+**⚠️ Important: Path Handling**
+
+If your project path contains spaces (e.g., "02476 Machine Learning Operations"), always use quoted paths in Docker commands:
+- ✅ Use: `-v "$(pwd)/data:/data"`
+- ❌ Avoid: `-v $(pwd)/data:/data` (will fail with spaces in path)
+
+**⚠️ Important: Data Requirements**
+
+Before running training containers, ensure your data is preprocessed:
+- Required files in `data/processed/`: `train_texts.json`, `train_labels.pt`, `test_texts.json`, `test_labels.pt`, `category_mapping.json`
+- If missing, run: `uv run invoke preprocess-data --download`
+- The Docker container expects data to be mounted at `/data` (mapped from `$(pwd)/data`)
+
 The project includes multiple Dockerfiles for different purposes. You can build and test Docker images locally before deploying to cloud environments.
 
 #### Building Docker Images
@@ -456,15 +490,18 @@ The project includes multiple Dockerfiles for different purposes. You can build 
 **Using invoke (recommended):**
 
 ```bash
-# Build all Docker images (train and api)
+# Build all Docker images (PyTorch train, TF-IDF train, and api)
 uv run invoke docker-build
 ```
 
 **Direct docker commands:**
 
 ```bash
-# Build training image
+# Build PyTorch training image
 docker build -f dockerfiles/train.dockerfile -t train:latest .
+
+# Build TF-IDF training image
+docker build -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest .
 
 # Build API image
 docker build -f dockerfiles/api.dockerfile -t api:latest .
@@ -475,34 +512,117 @@ docker build -f dockerfiles/evaluate.dockerfile -t evaluate:latest .
 
 **⚠️ Platform-specific builds (for GCP/Vertex AI):**
 
-If you're on macOS (ARM64) and plan to deploy to GCP, you must build for `linux/amd64`:
+**Recommended: Multi-platform builds** (works on both ARM64 Mac and AMD64 GCP):
 
 ```bash
-# Build training image for linux/amd64 platform
-docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest .
+# Build for both platforms (ARM64 for local, AMD64 for GCP)
+# Docker automatically selects the native architecture when running
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/api.dockerfile -t api:latest --load .
 
-# Build API image for linux/amd64 platform
-docker buildx build --platform linux/amd64 -f dockerfiles/api.dockerfile -t api:latest .
+# Note: --load only loads one platform. For true multi-platform, push to registry:
+# docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --push .
+```
+
+**Alternative: Single platform builds** (faster for local testing):
+
+```bash
+# Build for native platform (ARM64 on Mac, AMD64 on Linux)
+docker buildx build --platform linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .
+docker buildx build --platform linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
+
+# Or build for AMD64 only (required for GCP deployment)
+docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest --load .
+docker buildx build --platform linux/amd64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
+docker buildx build --platform linux/amd64 -f dockerfiles/api.dockerfile -t api:latest --load .
 ```
 
 #### Running Docker Containers Locally
 
-**Training Container:**
+**⚠️ Note:** All examples use quoted paths `"$(pwd)/..."` to handle directory paths with spaces correctly. If your project is in a path without spaces, the quotes are still safe to use.
+
+**Training Container (PyTorch):**
 
 ```bash
 # Run training with data mounted from local directory
 docker run --rm \
-  -v $(pwd)/data:/data \
-  -v $(pwd)/outputs:/outputs \
-  -v $(pwd)/models:/models \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train:latest
+
+# On ARM64 Mac, specify platform to suppress warning:
+docker run --platform linux/amd64 --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
   train:latest
 
 # With custom Hydra config override
 docker run --rm \
-  -v $(pwd)/data:/data \
-  -v $(pwd)/outputs:/outputs \
-  -v $(pwd)/models:/models \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
   train:latest training.epochs=5 training.batch_size=64
+```
+
+**Training Container (TF-IDF):**
+
+```bash
+# Run TF-IDF training with data mounted from local directory
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train-tfidf:latest
+
+# On ARM64 Mac, specify platform to suppress warning:
+docker run --platform linux/amd64 --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train-tfidf:latest
+
+# With custom Hydra config override
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train-tfidf:latest --config-name=config_tfidf training.epochs=1
+
+# Override config values without rebuilding (recommended for quick changes)
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train-tfidf:latest --config-name=config_tfidf \
+    model.max_features=10000 \
+    training.epochs=1
+
+# On ARM64 Mac with platform flag and config override
+docker run --platform linux/amd64 --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train-tfidf:latest --config-name=config_tfidf training.epochs=1
+
+# Override multiple config values at once
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  -v "$(pwd)/models:/models" \
+  train-tfidf:latest --config-name=config_tfidf \
+    model.max_features=10000 \
+    model.max_depth=8 \
+    training.epochs=10
+
+# Note: Ensure data/processed/ contains required files before running:
+# - train_texts.json, train_labels.pt
+# - test_texts.json, test_labels.pt
+# - category_mapping.json
+# - val_texts.json, val_labels.pt (optional but recommended)
+# If missing, run: uv run invoke preprocess-data --download
 ```
 
 **API Container:**
@@ -511,7 +631,7 @@ docker run --rm \
 # Run API server (exposes port 8000)
 docker run --rm \
   -p 8000:8000 \
-  -v $(pwd)/models:/models \
+  -v "$(pwd)/models:/models" \
   api:latest
 
 # Test the API
@@ -523,9 +643,9 @@ curl http://localhost:8000/health
 ```bash
 # Run evaluation with model and data mounted
 docker run --rm \
-  -v $(pwd)/data:/data \
-  -v $(pwd)/models:/models \
-  -v $(pwd)/reports:/reports \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/models:/models" \
+  -v "$(pwd)/reports:/reports" \
   evaluate:latest /models/model.pth
 ```
 
@@ -534,7 +654,7 @@ docker run --rm \
 **1. Verify image builds successfully:**
 
 ```bash
-# Check that image exists
+# Check that images exist
 docker images | grep train
 docker images | grep api
 ```
@@ -545,11 +665,32 @@ docker images | grep api
 # Quick test run (will fail if data is missing, but confirms container works)
 docker run --rm train:latest --help
 
-# Full test with data
+# On ARM64 Mac, specify platform to suppress warning:
+docker run --platform linux/amd64 --rm train:latest --help
+
+# Quick test for TF-IDF training container
+docker run --rm train-tfidf:latest --help
+
+# On ARM64 Mac, specify platform to suppress warning:
+docker run --platform linux/amd64 --rm train-tfidf:latest --help
+
+# Full test with data (PyTorch)
 docker run --rm \
-  -v $(pwd)/data:/data \
-  -v $(pwd)/outputs:/outputs \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
   train:latest training.epochs=1 training.batch_size=8
+
+# Full test with data (TF-IDF)
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest training.epochs=1
+
+# On ARM64 Mac with platform flag (TF-IDF)
+docker run --platform linux/amd64 --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest training.epochs=1
 ```
 
 **3. Test API container:**
@@ -576,12 +717,12 @@ docker stop test-api && docker rm test-api
 ```bash
 # Check that data is accessible inside container
 docker run --rm \
-  -v $(pwd)/data:/data \
+  -v "$(pwd)/data:/data" \
   train:latest ls -la /data
 
 # Check that outputs directory is writable
 docker run --rm \
-  -v $(pwd)/outputs:/outputs \
+  -v "$(pwd)/outputs:/outputs" \
   train:latest touch /outputs/test.txt && ls -la /outputs
 ```
 
@@ -592,14 +733,49 @@ docker run --rm \
 mkdir -p test_data/processed
 echo '{"test": "data"}' > test_data/processed/test.json
 
-# Run container with test data
+# Run PyTorch container with test data
 docker run --rm \
-  -v $(pwd)/test_data:/data \
-  -v $(pwd)/outputs:/outputs \
+  -v "$(pwd)/test_data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
   train:latest training.epochs=1
+
+# Run TF-IDF container with test data
+docker run --rm \
+  -v "$(pwd)/test_data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest training.epochs=1
 ```
 
 #### Docker Troubleshooting
+
+**Issue: Docker misinterprets path with spaces**
+
+If you see errors like `Unable to find image 'semester/02476:latest'` or `pull access denied for semester/02476`, Docker is misinterpreting your path due to spaces.
+
+```bash
+# Problem: Path with spaces causes Docker to misinterpret arguments
+# Error: Unable to find image 'semester/02476:latest'
+
+# Solution 1: Always quote paths (recommended)
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --help
+
+# Solution 2: Use absolute path variable
+PROJECT_ROOT="/Users/maks/Library/CloudStorage/OneDrive-DanmarksTekniskeUniversitet/DTU/11. semester/02476 Machine Learning Operations/MLOps_projectrepo"
+docker run --rm \
+  -v "${PROJECT_ROOT}/data:/data" \
+  -v "${PROJECT_ROOT}/outputs:/outputs" \
+  train-tfidf:latest --help
+
+# Solution 3: Use cd to project root first, then use relative paths
+cd "/Users/maks/Library/CloudStorage/OneDrive-DanmarksTekniskeUniversitet/DTU/11. semester/02476 Machine Learning Operations/MLOps_projectrepo"
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --help
+```
 
 **Issue: Permission denied when writing to mounted volumes**
 
@@ -611,17 +787,146 @@ chmod 755 outputs models reports
 
 **Issue: Platform mismatch errors on macOS**
 
+**Solution 1: Multi-platform builds (recommended)**
 ```bash
-# Fix: Always use --platform linux/amd64 for GCP deployments
-docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest .
+# Build for both ARM64 (Mac) and AMD64 (GCP) - Docker auto-selects native architecture
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
+
+# For registry push (true multi-platform):
+docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --push .
 ```
+
+**Solution 2: Single platform builds**
+```bash
+# For GCP deployment (AMD64 only):
+docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest --load .
+docker buildx build --platform linux/amd64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
+
+# For local testing on Mac (ARM64 only, faster):
+docker buildx build --platform linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .
+docker buildx build --platform linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .
+
+# Alternative using build arg:
+docker build --build-arg TARGETPLATFORM=linux/amd64 -f dockerfiles/train.dockerfile -t train:latest .
+```
+
+**Note:** When running AMD64 images on ARM64 Mac, Docker uses emulation which can be slower and may cause issues with native code (e.g., XGBoost). Building natively for ARM64 avoids these issues.
+docker run --platform linux/amd64 --rm train-tfidf:latest --help
+```
+
+**Issue: Need to update config without rebuilding Docker image**
+
+If you changed a config file but don't want to rebuild the entire Docker image:
+
+```bash
+# Solution 1: Override config via Hydra CLI (recommended - no rebuild needed)
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --config-name=config_tfidf \
+    model.max_features=10000 \
+    training.epochs=1
+
+# Solution 2: Fast rebuild (Docker uses layer caching - only rebuilds from configs/ onwards)
+# This is still fast because Docker caches layers before COPY configs/
+docker build -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest .
+
+# Solution 3: Mount configs as volume (for development only - requires Dockerfile change)
+# This allows live config updates without rebuilds, but is not recommended for production
+```
+
+**Issue: Training hangs or appears to stop during XGBoost training**
+
+If training starts but seems to hang after "Starting training...":
+
+```bash
+# 1. Check if it's actually running (XGBoost can be slow with large datasets)
+# The training might be running but not showing output. Wait a few minutes.
+
+# 2. Use smaller dataset for testing (recommended for debugging)
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --config-name=config_tfidf \
+    training.epochs=1 \
+    training.max_samples=1000 \
+    model.max_features=1000
+
+# 3. Check Docker container logs in real-time
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --config-name=config_tfidf \
+    training.epochs=1 \
+    training.max_samples=5000 2>&1 | tee training.log
+
+# 4. Monitor Docker container resource usage (in another terminal)
+docker stats
+
+# 5. Check if it's a memory issue - reduce features and samples
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --config-name=config_tfidf \
+    training.epochs=10 \
+    training.max_samples=5000 \
+    model.max_features=5000 \
+    model.n_estimators=50
+
+# 6. Run with Python unbuffered output to see progress immediately
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest python -u src/pname/train_tfidf.py \
+    --config-name=config_tfidf \
+    training.epochs=1 \
+    training.max_samples=1000
+```
+
+**Note:** Training 82k samples with 10k features can take 5-15 minutes. The vectorization step alone can take 1-2 minutes. Be patient or use `training.max_samples` to test with smaller datasets first.
+
+**Issue: Training fails with errors (XGBoost/TF-IDF)**
+
+If training starts but fails with an error:
 
 **Issue: Container can't find data files**
 
 ```bash
 # Fix: Verify mount paths match Dockerfile expectations
 # Training expects: /data (mapped from $(pwd)/data)
-docker run --rm -v $(pwd)/data:/data train:latest ls /data
+docker run --rm -v "$(pwd)/data:/data" train:latest ls /data
+docker run --rm -v "$(pwd)/data:/data" train-tfidf:latest ls /data
+```
+
+**Issue: Training fails after data loading**
+
+If training starts but fails during model training (e.g., after "Starting training..." message):
+
+```bash
+# 1. Check if data files exist and are accessible
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  train-tfidf:latest ls -la /data/processed/
+
+# 2. Verify required data files exist
+# Should see: train_texts.json, train_labels.pt, test_texts.json, test_labels.pt, category_mapping.json
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  train-tfidf:latest sh -c "ls -la /data/processed/*.json /data/processed/*.pt 2>/dev/null || echo 'Files missing'"
+
+# 3. Check if data needs to be preprocessed first
+# Run preprocessing if data/processed/ is empty or missing files
+uv run invoke preprocess-data --download
+
+# 4. For XGBoost errors, check system dependencies (libomp on Mac)
+# If you see libxgboost errors, install: brew install libomp
+
+# 5. Run with more verbose logging to see the actual error
+docker run --rm \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/outputs:/outputs" \
+  train-tfidf:latest --config-name=config_tfidf training.epochs=1 2>&1 | tee training.log
 ```
 
 **Issue: Out of disk space**
@@ -635,7 +940,8 @@ docker system prune -a --volumes
 
 | Image | Dockerfile | Purpose | Entrypoint |
 |-------|-----------|---------|------------|
-| `train:latest` | `dockerfiles/train.dockerfile` | Model training | `uv run src/pname/train.py` |
+| `train:latest` | `dockerfiles/train.dockerfile` | PyTorch model training (DistilBERT) | `uv run src/pname/train.py` |
+| `train-tfidf:latest` | `dockerfiles/train_tfidf.dockerfile` | TF-IDF + XGBoost model training | `uv run src/pname/train_tfidf.py` |
 | `api:latest` | `dockerfiles/api.dockerfile` | FastAPI server | `uv run uvicorn app.main:app` |
 | `evaluate:latest` | `dockerfiles/evaluate.dockerfile` | Model evaluation | `uv run src/pname/evaluate.py` |
 
@@ -1041,10 +1347,13 @@ uv run invoke docker-build
 # 2. Verify images exist
 docker images | grep -E "(train|api|evaluate)"
 
-# 3. Test training container (quick smoke test)
+# 3. Test PyTorch training container (quick smoke test)
 docker run --rm train:latest --help
 
-# 4. Test API container
+# 4. Test TF-IDF training container (quick smoke test)
+docker run --rm train-tfidf:latest --help
+
+# 5. Test API container
 docker run -d --name test-api -p 8000:8000 api:latest
 sleep 5
 curl http://localhost:8000/health

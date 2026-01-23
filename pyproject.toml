@@ -45,6 +45,7 @@ dependencies = [
     "evidently>=0.4.0",  # Data drift monitoring
     "pandas>=2.0.0",  # Required by Evidently
     "pyarrow>=10.0.0",  # For parquet support
+    "dvc>=3.66.1",
 ]
 
 [dependency-groups]

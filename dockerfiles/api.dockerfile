@@ -1,5 +1,17 @@
 # Base image with Python and uv pre-installed
-# CRITICAL: For GCP deployment, build with: docker buildx build --platform linux/amd64 ...
+# Supports multi-platform builds (ARM64 for local, AMD64 for GCP)
+#
+# Single platform build:
+#   docker buildx build --platform linux/amd64 -f dockerfiles/api.dockerfile -t api:latest .
+#   docker buildx build --platform linux/arm64 -f dockerfiles/api.dockerfile -t api:latest .
+#
+# Multi-platform build (recommended - works on both ARM64 Mac and AMD64 GCP):
+#   docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/api.dockerfile -t api:latest --push .
+#   (or without --push for local use: docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/api.dockerfile -t api:latest --load .)
+#
+# Docker automatically selects the native architecture when running the image.
+# TARGETPLATFORM is automatically set by buildx when using --platform flag
+ARG TARGETPLATFORM=linux/amd64
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 # Install build essentials
@@ -20,8 +32,11 @@ COPY configs/ configs/
 WORKDIR /
 
 # Install dependencies with cache mount for faster rebuilds
+# Use --no-dev to exclude dev dependencies (black, pytest, etc.) for smaller image
 ENV UV_LINK_MODE=copy
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache --no-install-project
+ENV PYTHONUNBUFFERED=1
+ENV UV_HTTP_TIMEOUT=600
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache --no-install-project --no-dev
 
 # Expose port for API
 EXPOSE 8000

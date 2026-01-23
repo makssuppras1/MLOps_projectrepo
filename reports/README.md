@@ -214,7 +214,7 @@ We deviated from the template by adding several project-specific files: `tasks.p
 
 We used **ruff** for linting and **black + isort** for formatting, configured through pre-commit hooks in `.pre-commit-config.yaml` with 120-character lines. We also used **type annotations** for typing and **docstrings** for documentation in core modules like `preprocess_data`, `ArXivDataset`, and `MyAwesomeModel`. Documentation is maintained with **MkDocs** and operational guides (LOGGING_GUIDE, profiling_guide).
 
-In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding. 
+In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding.
 In general, using these rules for code quality and formatting enables faster and better understanding on code functionality without having to spend time understanding the code format.
 
 ## Version control

@@ -81,6 +81,11 @@ def docker_build(ctx: Context, progress: str = "plain") -> None:
         pty=not WINDOWS,
     )
     ctx.run(
+        f"docker build -t train-tfidf:latest . -f dockerfiles/train_tfidf.dockerfile --progress={progress}",
+        echo=True,
+        pty=not WINDOWS,
+    )
+    ctx.run(
         f"docker build -t api:latest . -f dockerfiles/api.dockerfile --progress={progress}", echo=True, pty=not WINDOWS
     )
 
@@ -106,13 +111,40 @@ def preflight_check(ctx: Context, config: str = "configs/vertex_ai/vertex_ai_con
 
 
 @task
-def docker_build_gcp(ctx: Context, dockerfile: str = "dockerfiles/train.dockerfile", tag: str = "train:latest") -> None:
-    """Build Docker image for GCP (linux/amd64 platform)."""
-    ctx.run(
-        f"docker buildx build --platform linux/amd64 -f {dockerfile} -t {tag} . --load",
-        echo=True,
-        pty=not WINDOWS,
-    )
+def docker_build_gcp(
+    ctx: Context,
+    dockerfile: str = "dockerfiles/train.dockerfile",
+    tag: str = "train:latest",
+    multi_platform: bool = True,
+) -> None:
+    """Build Docker image with multi-platform support (ARM64 + AMD64) by default.
+
+    Args:
+        dockerfile: Path to Dockerfile
+        tag: Image tag
+        multi_platform: If True, build for both linux/amd64 and linux/arm64 (default: True)
+    """
+    if multi_platform:
+        # Multi-platform build (recommended - works on both ARM64 Mac and AMD64 GCP)
+        # Note: --load only works with single platform, so we build for native platform
+        import platform
+
+        native_arch = "linux/arm64" if platform.machine() == "arm64" else "linux/amd64"
+        ctx.run(
+            f"docker buildx build --platform {native_arch} -f {dockerfile} -t {tag} . --load",
+            echo=True,
+            pty=not WINDOWS,
+        )
+        print(f"\n✓ Built {tag} for {native_arch} (native architecture)")
+        print("  For multi-platform build with push to registry, use:")
+        print(f"  docker buildx build --platform linux/amd64,linux/arm64 -f {dockerfile} -t {tag} . --push")
+    else:
+        # Single platform build (AMD64 only, for GCP)
+        ctx.run(
+            f"docker buildx build --platform linux/amd64 -f {dockerfile} -t {tag} . --load",
+            echo=True,
+            pty=not WINDOWS,
+        )
 
 
 @task

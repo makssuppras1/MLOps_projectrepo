@@ -1,9 +1,11 @@
 """TF-IDF + XGBoost model for fast, explainable text classification."""
 
+import os
 import pickle
 from pathlib import Path
 
 import numpy as np
+from loguru import logger
 from omegaconf import DictConfig
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
@@ -72,6 +74,9 @@ class TFIDFXGBoostModel:
         # XGBoost classifier
         # For XGBoost 1.6+, early_stopping_rounds must be set in constructor, NOT in fit()
         early_stopping_rounds = model_cfg.get("early_stopping_rounds", None)
+        # Use n_jobs=1 to avoid threading issues that can cause crashes under emulation
+        # This is especially important when running AMD64 images on ARM64 hosts
+        n_jobs = model_cfg.get("n_jobs", 1)
         self.classifier = XGBClassifier(
             max_depth=model_cfg.get("max_depth", 6),
             learning_rate=model_cfg.get("learning_rate", 0.1),
@@ -83,7 +88,7 @@ class TFIDFXGBoostModel:
             objective="multi:softprob",
             num_class=self.num_labels,
             random_state=model_cfg.get("random_state", 42),  # Use config seed for reproducibility
-            n_jobs=-1,  # Use all CPU cores
+            n_jobs=n_jobs,  # Default to 1 to avoid threading issues under emulation
             eval_metric="mlogloss",
             early_stopping_rounds=early_stopping_rounds,  # Set in constructor for XGBoost 1.6+
         )
@@ -109,46 +114,191 @@ class TFIDFXGBoostModel:
             val_labels: Optional validation labels for early stopping.
         """
         # Vectorize texts
-        print(f"Vectorizing {len(texts)} training texts...")
+        logger.info(f"Vectorizing {len(texts)} training texts...")
         X = self.vectorizer.fit_transform(texts)
-        print(f"Training matrix shape: {X.shape}")
+        logger.info(f"Training matrix shape: {X.shape}")
 
         # Train classifier with early stopping if validation set provided
         # Note: Early stopping requires eval_set which doesn't work with Pipeline.fit(),
         # so we fit components separately, then update the pipeline
         if val_texts is not None and val_labels is not None:
-            print(f"Vectorizing {len(val_texts)} validation texts...")
+            logger.info(f"Vectorizing {len(val_texts)} validation texts...")
             X_val = self.vectorizer.transform(val_texts)
-            print(f"Validation matrix shape: {X_val.shape}")
+            logger.info(f"Validation matrix shape: {X_val.shape}")
             # Ensure early_stopping_rounds is set if we have validation data
+            n_estimators = self.classifier.get_params().get("n_estimators", 100)
             early_stopping_rounds = self.model_cfg.get("early_stopping_rounds", 20)
-            if self.classifier.get_params().get("early_stopping_rounds") is None:
-                self.classifier.set_params(early_stopping_rounds=early_stopping_rounds)
+
+            # CRITICAL: If n_estimators is too small, disable early stopping or adjust it
+            if n_estimators <= early_stopping_rounds:
+                logger.warning(
+                    f"n_estimators ({n_estimators}) <= early_stopping_rounds ({early_stopping_rounds}). Disabling early stopping."
+                )
+                self.classifier.set_params(early_stopping_rounds=None)
+                early_stopping_rounds = None
+            else:
+                if self.classifier.get_params().get("early_stopping_rounds") is None:
+                    self.classifier.set_params(early_stopping_rounds=early_stopping_rounds)
+
             # CRITICAL: Do NOT pass early_stopping_rounds to fit() - it's already set in constructor
+            logger.info(f"Starting XGBoost training with {X.shape[0]} samples and {X.shape[1]} features...")
+            logger.info(f"Early stopping rounds: {early_stopping_rounds}")
+            logger.info(
+                f"XGBoost parameters: n_estimators={n_estimators}, max_depth={self.classifier.get_params().get('max_depth')}"
+            )
+            # Force flush logs before potentially long-running operation
+            import sys
+
+            sys.stdout.flush()
+            sys.stderr.flush()
+            # Set environment variable to ensure XGBoost output is visible
+            os.environ["XGBOOST_VERBOSE"] = "1"
+
+            # Enable Python's faulthandler to catch segfaults and print stack traces
+            # Write to both stderr and a file for debugging
+            import faulthandler
+
+            faulthandler.enable(file=sys.stderr, all_threads=True)
+
+            # Also enable faulthandler dump on signal
+            import signal
+
+            faulthandler.register(signal.SIGUSR1, file=sys.stderr, all_threads=True)
+
             try:
-                self.classifier.fit(
-                    X,
-                    labels,
-                    eval_set=[(X_val, val_labels)],
-                    verbose=True,  # Enable verbose to see progress
+                import time
+
+                fit_start = time.time()
+                logger.info("Calling XGBoost fit()...")
+                logger.info(f"XGBoost n_jobs: {self.classifier.get_params().get('n_jobs')}")
+                logger.info(f"XGBoost n_estimators: {n_estimators}")
+                logger.info(f"XGBoost early_stopping_rounds: {early_stopping_rounds}")
+                sys.stdout.flush()
+                sys.stderr.flush()
+
+                # Determine eval_set based on early stopping
+                if early_stopping_rounds is not None:
+                    eval_set = [(X_val, val_labels)]
+                    logger.info("Using validation set for early stopping")
+                else:
+                    eval_set = None
+                    logger.info("Training without early stopping (no validation set or n_estimators too small)")
+
+                # Use verbose=True for progress output (XGBoost will print to stderr)
+                # This will show progress every iteration
+                if eval_set is not None:
+                    self.classifier.fit(
+                        X,
+                        labels,
+                        eval_set=eval_set,
+                        verbose=True,  # Show progress (prints to stderr)
+                    )
+                else:
+                    # No early stopping, train normally
+                    self.classifier.fit(
+                        X,
+                        labels,
+                        verbose=True,  # Show progress (prints to stderr)
+                    )
+
+                # Force flush after fit
+                sys.stdout.flush()
+                sys.stderr.flush()
+                fit_duration = time.time() - fit_start
+                logger.info(
+                    f"XGBoost training completed successfully in {fit_duration:.2f} seconds ({fit_duration/60:.2f} minutes)"
                 )
             except Exception as e:
                 import traceback
 
-                print(f"ERROR in XGBoost fit: {e}")
-                print(traceback.format_exc())
+                logger.error(f"ERROR in XGBoost fit: {e}")
+                logger.error(traceback.format_exc())
+                sys.stdout.flush()
+                sys.stderr.flush()
+                # Try to dump faulthandler if available
+                try:
+                    faulthandler.dump_traceback(sys.stderr, all_threads=True)
+                except Exception:
+                    pass
+                raise
+            except BaseException as e:
+                # Catch even SystemExit and KeyboardInterrupt to log them
+                import traceback
+
+                logger.critical(f"CRITICAL: XGBoost fit() raised BaseException: {e}")
+                logger.critical(traceback.format_exc())
+                sys.stdout.flush()
+                sys.stderr.flush()
+                # Try to dump faulthandler if available
+                try:
+                    faulthandler.dump_traceback(sys.stderr, all_threads=True)
+                except Exception:
+                    pass
                 raise
         else:
             # Train without early stopping - disable early stopping if it was set
             if self.classifier.get_params().get("early_stopping_rounds") is not None:
                 self.classifier.set_params(early_stopping_rounds=None)
+            logger.info(f"Starting XGBoost training with {X.shape[0]} samples and {X.shape[1]} features...")
+            logger.info(
+                f"XGBoost parameters: n_estimators={self.classifier.get_params().get('n_estimators')}, max_depth={self.classifier.get_params().get('max_depth')}"
+            )
+            # Force flush logs before potentially long-running operation
+            import sys
+
+            sys.stdout.flush()
+            sys.stderr.flush()
+            # Set environment variable to ensure XGBoost output is visible
+            os.environ["XGBOOST_VERBOSE"] = "1"
+
+            # Enable Python's faulthandler to catch segfaults and print stack traces
+            import faulthandler
+
+            faulthandler.enable(file=sys.stderr, all_threads=True)
+
             try:
-                self.classifier.fit(X, labels)
+                import time
+
+                fit_start = time.time()
+                logger.info("Calling XGBoost fit()...")
+                logger.info(f"XGBoost n_jobs: {self.classifier.get_params().get('n_jobs')}")
+                logger.info(f"XGBoost n_estimators: {self.classifier.get_params().get('n_estimators')}")
+                sys.stdout.flush()
+                sys.stderr.flush()
+                self.classifier.fit(X, labels, verbose=True)  # Show progress
+                # Force flush after fit
+                sys.stdout.flush()
+                sys.stderr.flush()
+                fit_duration = time.time() - fit_start
+                logger.info(
+                    f"XGBoost training completed successfully in {fit_duration:.2f} seconds ({fit_duration/60:.2f} minutes)"
+                )
             except Exception as e:
                 import traceback
 
-                print(f"ERROR in XGBoost fit: {e}")
-                print(traceback.format_exc())
+                logger.error(f"ERROR in XGBoost fit: {e}")
+                logger.error(traceback.format_exc())
+                sys.stdout.flush()
+                sys.stderr.flush()
+                # Try to dump faulthandler if available
+                try:
+                    faulthandler.dump_traceback(sys.stderr, all_threads=True)
+                except Exception:
+                    pass
+                raise
+            except BaseException as e:
+                # Catch even SystemExit and KeyboardInterrupt to log them
+                import traceback
+
+                logger.critical(f"CRITICAL: XGBoost fit() raised BaseException: {e}")
+                logger.critical(traceback.format_exc())
+                sys.stdout.flush()
+                sys.stderr.flush()
+                # Try to dump faulthandler if available
+                try:
+                    faulthandler.dump_traceback(sys.stderr, all_threads=True)
+                except Exception:
+                    pass
                 raise
 
         # Update pipeline with fitted components

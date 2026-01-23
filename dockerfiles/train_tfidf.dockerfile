@@ -2,12 +2,12 @@
 # Supports multi-platform builds (ARM64 for local, AMD64 for GCP)
 #
 # Single platform build:
-#   docker buildx build --platform linux/amd64 -f dockerfiles/train.dockerfile -t train:latest .
-#   docker buildx build --platform linux/arm64 -f dockerfiles/train.dockerfile -t train:latest .
+#   docker buildx build --platform linux/amd64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest .
+#   docker buildx build --platform linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest .
 #
 # Multi-platform build (recommended - works on both ARM64 Mac and AMD64 GCP):
-#   docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --push .
-#   (or without --push for local use: docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train.dockerfile -t train:latest --load .)
+#   docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --push .
+#   (or without --push for local use: docker buildx build --platform linux/amd64,linux/arm64 -f dockerfiles/train_tfidf.dockerfile -t train-tfidf:latest --load .)
 #
 # Docker automatically selects the native architecture when running the image.
 # TARGETPLATFORM is automatically set by buildx when using --platform flag
@@ -41,6 +41,8 @@ ENV PYTHONUNBUFFERED=1
 ENV UV_HTTP_TIMEOUT=600
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-cache --no-install-project --no-dev
 
-# Entrypoint for training script
+# Entrypoint for TF-IDF training script
 # Data will be accessed via /gcs/ mounted filesystem in Vertex AI
-ENTRYPOINT ["uv", "run", "src/pname/train.py"]
+# PYTHONUNBUFFERED=1 is already set above for unbuffered output
+# Using exec form ensures proper signal handling (Python process receives SIGTERM/SIGINT)
+ENTRYPOINT ["uv", "run", "src/pname/train_tfidf.py"]

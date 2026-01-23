@@ -3,7 +3,7 @@
 # Memory-optimized: Reduced features/ngrams to fit in 32GB RAM
 model:
   num_labels: 5
-  max_features: 15000  # Reduced from 20000 to save memory (still plenty for good accuracy)
+  max_features: 10000  # Reduced from 20000 to save memory (still plenty for good accuracy)
   stop_words: "english"
   ngram_range_min: 1  # Minimum n-gram size
   ngram_range_max: 2  # Reduced from 3 to 2 (unigrams + bigrams only) to save memory
