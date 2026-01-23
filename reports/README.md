@@ -211,9 +211,11 @@ uv run inv --list
 >
 > Answer:
 
-From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis.
+Our project utilized the [mlops_template](https://github.com/SkafteNicki/mlops_template), keeping core structures, including the `src/`, `tests/`, and `notebooks/` directories. We filled out `src/data.py` for ArXiv preprocessing and `src/model.py` for our DistilBERT architecture.
 
-We deviated from the template by adding several project-specific files: `tasks.py` for invoke commands, guide files (`LOGGING_GUIDE.md`, `profiling_guide.md`, `config_guide.md`), a data download script (`curl_arxiv-scientific-research-papers-dataset`), and various output directories. The core template structure was maintained while adding these practical extensions for our specific MLOps workflow.
+However, we modified the projectstructure for production readiness. We replaced the traditional `requirements.txt` with a `pyproject.toml` and `uv.lock` system to leverage the UV package manager. We also removed the standard `docker/` folder in favor of a specialized `dockerfiles/` directory containing multi-stage builds for training, evaluation, and API deployment.
+
+New additions include a `monitoring/` folder for data drift detection, a `scripts/` folder for automation, and a dedicated `app/` directory for our FastAPI implementation. To handle orchestration, we added `tasks.py` file using Invoke, moving away from basic scripts. Finally, we integrated DVC (`.dvc/`) to manage data version control via Google Cloud Storage.
 
 ### Question 6
 
