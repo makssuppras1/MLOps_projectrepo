@@ -454,9 +454,9 @@ Images are automatically built and pushed to Google Artifact Registry via Cloud 
 >
 > Answer:
 
-During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors, and **unit tests** (17 tests across data, model, and training modules) was used to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
+In this project, we a "observability" system for debugging. For "daily" debugging, we used **Loguru** for structured logging to track data flow and caught API errors using 16 custom exception handlers in FastAPI. To prevent regressions, we expanded our test suite into four specialized categories: *unit, integration, performance*, and *monitoring*. Before deploying to the cloud, we ran a `preflight_check.sh` script to catch common environment and permission issues that usually cause Vertex AI jobs to fail.
 
-We did implement a **profiler.py** module with PyTorch profiler integration and created a **profiling guide**, however profiling was not fully utilized. Our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
+Regarding performance, we developed a `profiler.py` module that integrates the PyTorch Profiler with TensorBoard. This allowed us to visualize CPU/GPU bottlenecks and memory usage through Chrome traces. While our code is functional, it is not "perfect" — the profiling results highlighted that our data-loading pipeline could be further optimized to better saturate the GPU. We also used **Locust** to simulate multiple users hitting our API, ensuring the system doesn't crash under pressure. This learning process taught us that professional MLOps is as much about monitoring and performance validation as it is about writing the model code itself. In general our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
 
 ## Working in the cloud
 
@@ -473,13 +473,15 @@ We did implement a **profiler.py** module with PyTorch profiler integration and 
 >
 > Answer:
 
-***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
+***Google Cloud Storage (GCS)***: Object storage service used for DVC remote data versioning (`gs://mlops_project_data_bucket1-europe-west1`), model artifact storage, training data staging, and source code staging for Cloud Build operations.
 
-***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``.
+***Vertex AI***: Managed machine learning platform used for custom training job orchestration with automatic GCS bucket mounting at `/gcs/mlops_project_data_bucket1/`, supporting both CPU (n1-highmem-4) and GPU (n1-standard-4) machine configurations.
 
-***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
+***Artifact Registry***: Container registry service (`europe-west1-docker.pkg.dev/dtumlops-484310/container-registry/`) used to store and distribute Docker images for training, evaluation, and API deployment with multi-platform support (ARM64/AMD64).
 
-***Cloud Build***: CI/CD service used to build Docker images in the cloud from source code, automatically handling the build process and pushing images to Artifact Registry without requiring local Docker installation.
+***Cloud Build***: CI/CD service with three specialized build configurations used to automatically build platform-specific Docker images (linux/amd64 for GCP compatibility) and push them to Artifact Registry.
+
+***Secret Manager***: Secure credential management service used to inject sensitive environment variables (WANDB_API_KEY) into Vertex AI training jobs for experiment tracking integration.
 
 ### Question 18
 
@@ -494,9 +496,11 @@ We did implement a **profiler.py** module with PyTorch profiler integration and 
 >
 > Answer:
 
-For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
+We **migrated from Google Compute Engine to Vertex AI** for our cloud training infrastructure. Rather than manually managing VM instances, we use **Vertex AI Custom Training Jobs** which provide managed machine learning infrastructure with automatic resource provisioning and teardown.
 
-To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
+Our current setup uses multiple machine configurations depending on the training requirements: **n1-highmem-2** for basic CPU training, **n1-standard-4** with **NVIDIA Tesla T4 GPUs** for accelerated training, **e2-standard-4** for balanced workloads, and **e2-highmem-4** (32GB RAM) for memory-intensive TF-IDF training. To optimize costs, we utilize **preemptible instances** in fast training configurations and **SSD boot disks** (pd-ssd, 100GB) for better I/O performance.
+
+The training jobs automatically mount our GCS bucket (`gs://mlops_project_data_bucket1`) at `/gcs/mlops_project_data_bucket1/` and run our custom Docker containers from Artifact Registry. This managed approach eliminated the need for manual VM provisioning, SSH access, and infrastructure maintenance that traditional Compute Engine required.
 
 ### Question 19
 
@@ -505,7 +509,9 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![bucket_20012026](figures/bucket_20012026.png)
+![GCP_bucket1](figures/GCP_bucket1.png)
+
+![GCP_bucket2](figures/GCP_bucket2.png)
 
 ### Question 20
 
@@ -514,7 +520,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![registry_20012026](figures/registry_20012026.png)
+![GCP_artifact-registry](figures/GCP_artifact-registry.png)
 
 ### Question 21
 
@@ -523,7 +529,7 @@ To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We
 >
 > Answer:
 
-![build_20012026](figures/build_20012026.png)
+![GCP_cloudbuild](figures/GCP_cloudbuild.png)
 
 ### Question 22
 
