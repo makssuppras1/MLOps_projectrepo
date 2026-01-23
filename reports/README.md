@@ -178,7 +178,7 @@ Both models and training pipelines are available in our codebase, and can be sel
 
 We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to:
 
-It is assumed that a given new team memeber has a working setup with all required tools presented in this course (UV, Google cloud service, Docker, DVC)
+It is assumed that a given new team memeber has a working setup with all required tools presented in this course (UV, Google cloud service, Docker, DVC, WandB)
 
 1) Clone the repository,
 2) Run the following command to create a virtual environment and install all main and development dependencies:
