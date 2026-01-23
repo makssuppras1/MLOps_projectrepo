@@ -253,7 +253,7 @@ In the context of a large-scale MLOps project, these concepts are essential for 
 >
 > Answer:
 
-In total we have implemented **18 tests** covering our core MLOps pipeline. *test_data.py* (2 tests) validates preprocessing creates correct output files and split ratios. *test_model.py* (4 tests) tests PyTorch model initialization, forward passes, encoder freezing, and gradient flow. *test_training.py* (2 tests) ensures reproducibility via seed setting and loss reduction. *test_tfidf_pipeline.py* (5 tests) validates TF-IDF+XGBoost pipeline assembly, save/load, backward compatibility, early stopping, and data leakage prevention. *test_train_tfidf_pipeline.py* (3 tests) tests the TF-IDF training script for artifact generation, epochs-to-estimators mapping, and validation-free training. *test_apis.py* (1 test) validates API prediction endpoint. *test_drift.py* (1 test) tests drift monitoring infrastructure.
+In total we have implemented **18 tests** covering our core MLOps pipeline. `test_data.py` (*2 tests*) validates preprocessing creates correct output files and split ratios. `test_model.py` (*4 tests*) tests PyTorch model initialization, forward passes, encoder freezing, and gradient flow. `test_training.py` (*2 tests*) ensures reproducibility via seed setting and loss reduction. `test_tfidf_pipeline.py` (*5 tests*) validates TF-IDF+XGBoost pipeline assembly, save/load, backward compatibility, early stopping, and data leakage prevention. `test_train_tfidf_pipeline.py` (*3 tests*) tests the TF-IDF training script for artifact generation, epochs-to-estimators mapping, and validation-free training. `test_apis.py` (*1 test*) validates API prediction endpoint. And finaly `test_drift.py` (*1 test*) tests drift monitoring infrastructure.
 
 ### Question 8
 
@@ -273,8 +273,6 @@ The total code coverage of our code is **43%**, covering 566 out of 996 total st
 Our current coverage breakdown shows: `data.py` at 47%, `model.py` at 62%, `model_tfidf.py` at 67%, `train.py` at 12%, and `train_tfidf.py` at 63%.
 
 Notice that there are two model and train coverages because of the legacy `model.py` which we were forced to abandon.
-
-
 
 ### Question 9
 
