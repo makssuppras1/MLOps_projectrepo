@@ -148,13 +148,13 @@ s204634, s204614, s204598
 >
 > Answer:
 
-We used two main approaches for our text classification tasks on scientific papers:
+Two approaches was applied for text classification tasks on scientific papers:
 
-1. **Transformers (Hugging Face)**: We initally used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development. However it proved hard to find a sweetspot for training, which resulted in us favoring simpler and older libraries.
+1. **Transformers**: We initally used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our pipeline. However it proved hard to find a sweetspot for training, which resulted in us favoring simpler and older libraries.
 
 2. **TF-IDF + XGBoost**: In addition to deep learning, we implemented a classical pipeline using scikit-learn's **TF-IDF** vectorizer combined with an **XGBoost** classifier. This approach embeds the documents into sparse feature vectors and then uses the gradient boosted tree model for robust classification. Training for this pipeline is handled in our repository via a dedicated script and configuration, allowing us to compare classical and transformer-based methodologies in both local and cloud environments.
 
-Additionally, we incorporated **PyArrow** for efficient data storage and retrieval in Parquet format, enabling faster I/O operations and better compression for our large dataset. **Pillow** was used for image processing tasks, particularly for handling any visual elements or converting image data when needed in our data pipeline.
+Additionally, we incorporated **PyArrow** for efficient data storage and retrieval in Parquet format, enabling faster I/O operations and better compression for our large dataset. **Pillow** was used for image processing tasks, particularly for handling visual elements or converting image data when needed in our data pipeline.
 
 Both models and training pipelines are available in our codebase, and can be selected via configuration for experimentation or production use.
 
@@ -322,30 +322,28 @@ In truth it might have been overkill to do data version control for this specifi
 >
 > Answer:
 
-TODO describe in detail some of the important tests that we are running.
-
 The Continuous integration setup consists of 'GitHub Actions' workflows located in the tests.yaml file. The file runs when a pull requests or a push to main is made. It runs three jobs, unit testing, linting, and basic packaging checks.
 
-* **Testing**: checks out the repo, sets up uv, caches dependencies, installs project dependencies, installs a specified PyTorch version for testing, runs pytest, and then runs coverage. The test across multiple platforms (Ubuntu, MacOS and Windows) and python versions (3.12, 3.13) to ensure a minimum level of compatibility.
+* **Testing**: We use *uv* to install dependencies and specific PyTorch versions. Pytest and coverage reports are executed across Ubuntu, macOS, and Windows using Python 3.12 and 3.13 to ensure cross-platform compatibility.
 
-* **Linting and formatting**: Handled in the tests.yaml file as 'jobs'. Ubuntu sets up uv and runs Ruff linting and formatting check.
+* **Linting and formatting**: *Ruff* is utilized within the workflow to enforce consistent styling and catch syntax issues automatically.
 
-* **Build**: builds Docker images; the job is defined but details are in the same file.
+* **Build**: Docker images are built as a final check to verify containerization stability.
 
-Github's Caching is utilized to store the python packages from the uv.lock file, so that subsequent runs can use the stored packages and skip the process of installing them again. This means that the first run will be relatively lengthy (a couple of minutes) as it has to install all the packages, but subsequent tests can be performed in seconds. The time saved by caching grows exponentially as the number of tests increase.
+* **Caching**: We utilize GitHub’s caching for the `uv.lock` file. While the initial run takes a few minutes, subsequent runs complete in seconds, significantly accelerating the development loop.
 
 An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
-**description of two critical unit tests**
+**Two critical unit tests**
 
  1. `test_preprocess_data_creates_output_files` from `test_data.py` \
-The purpose of this test is to validate the data preprocessing pipeline that is the foundation for all subsequent machine learning tasks. It creates a temporary directory with a csv file that contains 4 sample research papers with the columns title, abstract, and category and runs preprocess_data(). It then verifies that the following artifacts exists; train_texts.json, train_labels.pt, test_texts.json, test_labels.pt, and category_mapping.json. \
-This test is critical because our model relies on these artifacts being present in order to function.
+Validating the data preprocessing pipeline that is the foundation for all subsequent machine learning tasks. Creates a temporary directory with a csv file that contains 4 sample research papers with the columns title, abstract, and category and runs preprocess_data(). Then verifies the following artifacts exists; train_texts.json, train_labels.pt, test_texts.json, test_labels.pt, and category_mapping.json. \
+This test is critical as these artifacts are essential for model functionality.
 
 2. `test_no_data_leakage` from `test_tfidf_pipeline.py` \
-The purpose of this test is to ensure that the tf-idf model doesn't leak validation/test data into its vocab learning. \
+Ensures that the tf-idf model doesn't leak validation/test data into its vocab learning. \
 It creates three seperate text datasets (6 training, 1 validation, and 1 test) and trains the model. It verifies that all three datasets produce the same number of features and that the predictions work on the validations and test sets. \
-This test is critical because data leakage can skew the model and destroy its performance in production. If this tests fails then we know that the model is unreliable.
+This test is critical because leakage skews performance and indicates model unreliability.
 
 
 ## Running code and tracking experiments
@@ -409,7 +407,7 @@ To reproduce an experiment one would have to run the following in the terminal:
 >
 > Answer:
 
-Since our full data set is very large and takes a long time to train, we ran a sweep in wandb with a small subset of the data (5000 articles). The purpose of this sweep was to come closer to finding and optimal set of hyperparameters that we could then train the full model on, the sweep config can be found in configs/experiment/sweep_config.yaml. The result of the sweep can be seen in the figure below.
+Since the full data set used in the project is very large and takes a long time to train, we ran a sweep in Weights & Biases with a small subset of the data (5000 articles). The purpose of this sweep was to come closer to finding and optimal set of hyperparameters that we could then train the full model on, the sweep config can be found in `configs/experiment/sweep_config.yaml.`. The result of the sweep can be seen in the figure below.
 
 ![wandb_sweep_summary](figures/wandb_sweep_summary.jpg)
 
@@ -670,7 +668,7 @@ The "something special" in our implementation is the dedicated `/monitoring` end
 > Answer:
 
 All project GCP activites was performed on the GCP project groupe member s204634 created on Google Cloud and members s204598 and s204614 was then added as co-owners of the project to ensure full accessibility and control of the project in the cloud.
-Of the 50$ credidt awarded trough the course, 33% of them have been used at the end of the project (not counting the last project day), resulting in a cost of 11.67$ used on GCP services. 
+Of the 50$ credidt awarded trough the course, 33% of them have been used at the end of the project (not counting the last project day), resulting in a cost of 11.67$ used on GCP services.
 
 Looking at the forcasted cost, Google Cloud predicts a accumulated cost for January to be 26.74$, based on the current ussage for the prior perioed, amounting to 53.48% of the credits awarded. This increase in expected cost is due to the increase of services used in the later stages of the project.
 
@@ -719,7 +717,7 @@ This diagram shows how the project is structured from data collection all the wa
 
 *In the deployment stage*, the trained model is exposed through an inference API running on Cloud Run. Clients can send requests to this API and receive predictions in return.
 
-Finally, *the monitoring stage helps keep an eye on the system* after deployment. The API logs incoming requests, and these logs are used to check for data drift with tools like Evidently. Drift reports are generated and stored, which can signal when the model may need further investigation or retraining. 
+Finally, *the monitoring stage helps keep an eye on the system* after deployment. The API logs incoming requests, and these logs are used to check for data drift with tools like Evidently. Drift reports are generated and stored, which can signal when the model may need further investigation or retraining.
 
 Overall, the pipeline is designed to be practical, reproducible, and reasonably easy to maintain.
 
@@ -735,7 +733,7 @@ Overall, the pipeline is designed to be practical, reproducible, and reasonably 
 >
 > Answer:
 
-By far the biggest challenge with this project was interacting with Google Cloud. The complications rose from having to build and upload a multiplatform docker image that the cloud would then use to run our model. Because our model requires a lot of compute to run, we had to run it on the cloud, this meant that testing and experimenting was also mostly done in the cloud. As a result of this reliance on the cloud, it meant that any issues with the build/model took 2-3 minutes before an error was returned, greatly slowing down the development process. Working with a remote system that is obsqured from our own environment debugging becomes a lot more difficult since we need to know exactly how our own environment interacts with the cloud in order to pinpoint where the bugs occur. Furthermore, when an error occurs in the cloud or in the build process of the docker image, it does not return an error statement. This has made it very troublesome to do effective debugging since we don't know exactly what the cause of the error was, forcing us to do a lot of guesswork.
+With lenghts to other challenges, the biggest challenge we faced in this project was the interaction with Google Cloud. The complications rose from having to build and upload a multiplatform docker image that the cloud would then use to run our model on. Because our model requires a lot of compute to run, we had to run it on the cloud, this meant that testing and experimenting was also mostly done in the cloud and not on the local platform. As a result of this reliance on the cloud, it meant that any issues with the build/model took 2-3 minutes before an error was returned, greatly slowing down the development process. Working with a remote system that is obsqured from our own environment debugging becomes a lot more difficult since we need to know exactly how our own environment interacts with the cloud in order to pinpoint where the bugs occur. Furthermore, when an error occurs in the cloud or in the build process of the docker image, it does not return an error statement. This has made it very troublesome to do effective debugging since we don't know exactly what the cause of the error was, forcing us to do a lot of guesswork.
 
 ### Question 31
 
@@ -753,4 +751,4 @@ By far the biggest challenge with this project was interacting with Google Cloud
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
-Throughout the project, generative AI tools (ChatGPT, GitHub Copilot, and Cursor.ai) were used as development assistants to accelerate implementation of standard MLOps infrastructure components. AI assistance was particularly helpful for generating boilerplate code patterns such as FastAPI endpoint structures, Docker multi-platform build configurations, GitHub Actions workflow templates, and shell scripts with error handling. The tools also aided in debugging platform-specific issues (e.g., ARM64/AMD64 compatibility), refactoring code for better maintainability, and drafting documentation sections. All AI-generated suggestions were carefully reviewed, tested, and adapted to fit our specific requirements. The architectural decisions, model implementations, and overall system design remained entirely student-driven, with AI serving as a productivity tool rather than an autonomous author.
+Herer we will write our contribution
