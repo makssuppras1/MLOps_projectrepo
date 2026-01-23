@@ -301,6 +301,8 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 > *We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our*
 > *pipeline*
 >
+> Answer:
+
 DVC was used for managing the data in our project. We configured DVC with Google Clound Storage (GCS) as our remote storage backend, which allowed us to version control our dataset effectively. For collaboration between team members it offers the advantage of ensuring that everone is working on the same data, for example instead of downloading the dataset and running the preprocessing every time, each team member simply gets the dataset from the cloud.
 
 In truth it might have been overkill to do data version control for this specific dataset as it is static, and the preprocessing was relatively banal and unlikely to change during the project. If our dataset consisted every scientific paper and was updated every time a new paper was published it would definately make data version control a requirement for this project.
@@ -751,4 +753,4 @@ By far the biggest challenge with this project was interacting with Google Cloud
 > *We have used ChatGPT to help debug our code. Additionally, we used GitHub Copilot to help write some of our code.*
 > Answer:
 
---- question 31 fill here ---
+Throughout the project, generative AI tools (ChatGPT, GitHub Copilot, and Cursor.ai) were used as development assistants to accelerate implementation of standard MLOps infrastructure components. AI assistance was particularly helpful for generating boilerplate code patterns such as FastAPI endpoint structures, Docker multi-platform build configurations, GitHub Actions workflow templates, and shell scripts with error handling. The tools also aided in debugging platform-specific issues (e.g., ARM64/AMD64 compatibility), refactoring code for better maintainability, and drafting documentation sections. All AI-generated suggestions were carefully reviewed, tested, and adapted to fit our specific requirements. The architectural decisions, model implementations, and overall system design remained entirely student-driven, with AI serving as a productivity tool rather than an autonomous author.
