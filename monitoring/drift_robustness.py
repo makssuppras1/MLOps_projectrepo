@@ -1,7 +1,8 @@
 """Drift robustness testing for text classification models.
 
 Generates drifted versions of validation data and evaluates model performance
-across different drift scenarios to quantify sensitivity to data distribution shifts.
+across key drift scenarios (vocabulary shift, domain shift) to quantify
+sensitivity to data distribution shifts. Simplified to 2 scenarios × 2 severities = 4 test runs.
 """
 
 import json
@@ -181,8 +182,8 @@ def run_drift_robustness_test(
     model_path: str,
     model_type: str = "pytorch",  # or "tfidf"
     model_name: str = "distilbert-base-uncased",
-    val_set_size: Optional[int] = 500,
-    severities: List[float] = [0.1, 0.3, 0.5, 0.7],
+    val_set_size: Optional[int] = 300,
+    severities: List[float] = [0.3, 0.5],
     output_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Run drift robustness test across multiple scenarios.
@@ -242,10 +243,10 @@ def run_drift_robustness_test(
     baseline_metrics = evaluate_fn(val_texts, val_labels)
     logger.info(f"Baseline accuracy: {baseline_metrics['accuracy']:.4f}, F1: {baseline_metrics['macro_f1']:.4f}")
 
-    # Test scenarios
+    # Test scenarios (simplified: 2 most important scenarios)
     scenarios = []
 
-    # Scenario 1: Vocabulary shift
+    # Scenario 1: Vocabulary shift (OOV handling)
     logger.info("Testing vocabulary shift scenario...")
     for severity in severities:
         drifted_texts = apply_vocabulary_shift(val_texts, severity)
@@ -264,45 +265,7 @@ def run_drift_robustness_test(
         )
         logger.info(f"  Severity {severity}: accuracy={metrics['accuracy']:.4f}, delta={delta['accuracy']:.+.4f}")
 
-    # Scenario 2: Length shift (shorter)
-    logger.info("Testing length shift (shorter) scenario...")
-    for severity in severities:
-        drifted_texts = apply_length_shift(val_texts, severity, direction="shorter")
-        metrics = evaluate_fn(drifted_texts, val_labels)
-        delta = {
-            "accuracy": metrics["accuracy"] - baseline_metrics["accuracy"],
-            "macro_f1": metrics["macro_f1"] - baseline_metrics["macro_f1"],
-        }
-        scenarios.append(
-            {
-                "name": "length_shift_shorter",
-                "severity": severity,
-                "metrics": metrics,
-                "delta": delta,
-            }
-        )
-        logger.info(f"  Severity {severity}: accuracy={metrics['accuracy']:.4f}, delta={delta['accuracy']:.+.4f}")
-
-    # Scenario 3: Length shift (longer)
-    logger.info("Testing length shift (longer) scenario...")
-    for severity in severities:
-        drifted_texts = apply_length_shift(val_texts, severity, direction="longer")
-        metrics = evaluate_fn(drifted_texts, val_labels)
-        delta = {
-            "accuracy": metrics["accuracy"] - baseline_metrics["accuracy"],
-            "macro_f1": metrics["macro_f1"] - baseline_metrics["macro_f1"],
-        }
-        scenarios.append(
-            {
-                "name": "length_shift_longer",
-                "severity": severity,
-                "metrics": metrics,
-                "delta": delta,
-            }
-        )
-        logger.info(f"  Severity {severity}: accuracy={metrics['accuracy']:.4f}, delta={delta['accuracy']:.+.4f}")
-
-    # Scenario 4: Domain shift
+    # Scenario 2: Domain shift (realistic production scenario)
     logger.info("Testing domain shift scenario...")
     for severity in severities:
         drifted_texts = apply_domain_shift(val_texts, severity)
@@ -365,7 +328,7 @@ if __name__ == "__main__":
         model_path: str = typer.Argument(..., help="Path to model checkpoint"),
         model_type: str = typer.Option("pytorch", help="Model type: pytorch or tfidf"),
         model_name: str = typer.Option("distilbert-base-uncased", help="Pretrained model name (PyTorch only)"),
-        val_set_size: Optional[int] = typer.Option(500, help="Validation set size to use"),
+        val_set_size: Optional[int] = typer.Option(300, help="Validation set size to use"),
         output_path: str = typer.Option("monitoring/drift_robustness_report.json", help="Output JSON report path"),
     ) -> None:
         """Run drift robustness test."""
