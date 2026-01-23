@@ -424,7 +424,7 @@ The best model (shown in the figure below), had the following config and is what
 >
 > Answer:
 
-For our project we developed three Docker images: *one for training*, *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
+For our project we developed four Docker images: *two for training* (`train.dockerfile` & `train_tfidf.dockerfile`), *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
 
 For example to run the training docker image
 ```bash
