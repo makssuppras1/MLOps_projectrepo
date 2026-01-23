@@ -253,7 +253,7 @@ In the context of a large-scale MLOps project, these concepts are essential for 
 >
 > Answer:
 
-In total we have implemented **18 tests** covering our core MLOps pipeline. *test_data.py* (2 tests) validates preprocessing creates correct output files and split ratios. *test_model.py* (4 tests) tests PyTorch model initialization, forward passes, encoder freezing, and gradient flow. *test_training.py* (2 tests) ensures reproducibility via seed setting and loss reduction. *test_tfidf_pipeline.py* (5 tests) validates TF-IDF+XGBoost pipeline assembly, save/load, backward compatibility, early stopping, and data leakage prevention. *test_train_tfidf_pipeline.py* (3 tests) tests the TF-IDF training script for artifact generation, epochs-to-estimators mapping, and validation-free training. *test_apis.py* (1 test) validates API prediction endpoint. *test_drift.py* (1 test) tests drift monitoring infrastructure.
+In total we have implemented **18 tests** covering our core MLOps pipeline. `test_data.py` (*2 tests*) validates preprocessing creates correct output files and split ratios. `test_model.py` (*4 tests*) tests PyTorch model initialization, forward passes, encoder freezing, and gradient flow. `test_training.py` (*2 tests*) ensures reproducibility via seed setting and loss reduction. `test_tfidf_pipeline.py` (*5 tests*) validates TF-IDF+XGBoost pipeline assembly, save/load, backward compatibility, early stopping, and data leakage prevention. `test_train_tfidf_pipeline.py` (*3 tests*) tests the TF-IDF training script for artifact generation, epochs-to-estimators mapping, and validation-free training. `test_apis.py` (*1 test*) validates API prediction endpoint. And finaly `test_drift.py` (*1 test*) tests drift monitoring infrastructure.
 
 ### Question 8
 
@@ -274,8 +274,6 @@ Our current coverage breakdown shows: `data.py` at 47%, `model.py` at 62%, `mode
 
 Notice that there are two model and train coverages because of the legacy `model.py` which we were forced to abandon.
 
-
-
 ### Question 9
 
 > **Did you workflow include using branches and pull requests? If yes, explain how. If not, explain how branches and**
@@ -291,7 +289,6 @@ Notice that there are two model and train coverages because of the legacy `model
 
 We made use of both branches and pull requests (PRs) in our project. Rather than having individual branches per group member, we implemented **feature-based branches** where each branch corresponded to a specific feature or functionality being developed. This approach was chosen because we implemented co-coding practices where multiple team members could work together on the same features. We used pull requests to merge these feature branches back into the main branch, which allowed us to keep the main branch as up-to-date as possible while maintaining smaller, focused changes per PR.
 Additionally, we set up our GitHub repository to require a **minimum of 2 group members to approve a PR** before it could be merged, following the methods taught in module 17 of the course material. This workflow helped us maintain better version control by ensuring each PR contained a cohesive set of changes related to a specific feature, making code reviews more manageable and reducing conflicts during merges.
-
 
 ### Question 10
 
