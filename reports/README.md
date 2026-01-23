@@ -454,9 +454,9 @@ Images are automatically built and pushed to Google Artifact Registry via Cloud 
 >
 > Answer:
 
-During the project, different methods was applied for debugging. **Loguru logging** was used for codebase tracking execution flow and errors, and **unit tests** (17 tests across data, model, and training modules) was used to catch regressions early. We also implemented **error handling** in the API with try-catch blocks and **preflight checks** via `scripts/preflight_check.sh` for validating *Vertex AI* deployments. We created **load testing infrastructure** using Locust for API performance testing.
+In this project, we a "observability" system for debugging. For "daily" debugging, we used **Loguru** for structured logging to track data flow and caught API errors using 16 custom exception handlers in FastAPI. To prevent regressions, we expanded our test suite into four specialized categories: *unit, integration, performance*, and *monitoring*. Before deploying to the cloud, we ran a `preflight_check.sh` script to catch common environment and permission issues that usually cause Vertex AI jobs to fail.
 
-We did implement a **profiler.py** module with PyTorch profiler integration and created a **profiling guide**, however profiling was not fully utilized. Our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
+Regarding performance, we developed a `profiler.py` module that integrates the PyTorch Profiler with TensorBoard. This allowed us to visualize CPU/GPU bottlenecks and memory usage through Chrome traces. While our code is functional, it is not "perfect" — the profiling results highlighted that our data-loading pipeline could be further optimized to better saturate the GPU. We also used **Locust** to simulate multiple users hitting our API, ensuring the system doesn't crash under pressure. This learning process taught us that professional MLOps is as much about monitoring and performance validation as it is about writing the model code itself. In general our code is not perfect and could have benefited from systematic performance analysis to optimize training speed and memory usage.
 
 ## Working in the cloud
 
