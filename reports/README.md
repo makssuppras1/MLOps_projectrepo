@@ -230,10 +230,11 @@ New additions include a `monitoring/` folder for data drift detection, a `script
 >
 > Answer:
 
-We used **ruff** for linting and **black + isort** for formatting, configured through pre-commit hooks in `.pre-commit-config.yaml` with 120-character lines. We also used **type annotations** for typing and **docstrings** for documentation in core modules like `preprocess_data`, `ArXivDataset`, and `MyAwesomeModel`. Documentation is maintained with **MkDocs** and operational guides (LOGGING_GUIDE, profiling_guide).
+Throughout this project, we applied concepts to ensure quality through several automated methods. We implemented **Ruff** for linting, alongside **Black** and **isort** for formatting, all standardized to a 120-character line limit. These tools are integrated into our workflow using pre-commit hooks, ensuring that every commit is checked locally before it reaches the repository. Our GitHub Actions pipeline further automates this process, running these checks across different operating systems (*Ubuntu, Windows, macOS*) to ensure cross-platform compatibility.
 
-In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding.
-In general, using these rules for code quality and formatting enables faster and better understanding on code functionality without having to spend time understanding the code format.
+Using **MkDocs** for the `mkdocstrings` plugin was applied to automatically generate our API documentation directly from our source code.
+
+In the context of a large-scale MLOps project, these concepts are essential for collaborative scalability. Without strict formatting and linting, technical debt accumulates quickly as different contributors introduce varying styles, leading to "noisy" code reviews. Explicit typing and comprehensive documentation serve as a crucial knowledge-transfer mechanism; they transform complex scripts into a readable system. For a student project, this discipline ensures that our architectural decisions remain clear over time, preventing bugs during refactoring and making the onboarding process for new team members much more efficient.
 
 ## Version control
 
