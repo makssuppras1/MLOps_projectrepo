@@ -48,6 +48,7 @@ dependencies = [
     "dvc>=3.66.1",
     "dvc-gs>=3.0.0",  # DVC plugin for Google Cloud Storage support
     "dotenv>=0.9.9",
+    "markdown>=3.10",
 ]
 
 [dependency-groups]
