@@ -150,9 +150,11 @@ s204634, s204614, s204598
 
 We used two main approaches for our text classification tasks on scientific papers:
 
-1. **Transformers (Hugging Face)**: We used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development and enabling us to leverage state-of-the-art contextual embeddings for classification. However it proved hard to find a sweetspot for training on the gcloud that we turned to simpler and older libraries.
+1. **Transformers (Hugging Face)**: We initally used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development. However it proved hard to find a sweetspot for training, which resulted in us favoring simpler and older libraries.
 
 2. **TF-IDF + XGBoost**: In addition to deep learning, we implemented a classical pipeline using scikit-learn's **TF-IDF** vectorizer combined with an **XGBoost** classifier. This approach embeds the documents into sparse feature vectors and then uses the gradient boosted tree model for robust classification. Training for this pipeline is handled in our repository via a dedicated script and configuration, allowing us to compare classical and transformer-based methodologies in both local and cloud environments.
+
+Additionally, we incorporated **PyArrow** for efficient data storage and retrieval in Parquet format, enabling faster I/O operations and better compression for our large dataset. **Pillow** was used for image processing tasks, particularly for handling any visual elements or converting image data when needed in our data pipeline.
 
 Both models and training pipelines are available in our codebase, and can be selected via configuration for experimentation or production use.
 
@@ -175,11 +177,25 @@ Both models and training pipelines are available in our codebase, and can be sel
 > Answer:
 
 We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to:
-1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)),
+
+1) Install UV package manager following the [official guide](https://docs.astral.sh/uv/getting-started/installation/),
 2) Clone the repository,
-3) Run `uv sync` to install all dependencies exactly as specified in the lock file,
-4) Download the data to your local repository buy running the following command in the terminal: ``uv run sh curl_arxiv-scientific-research-papers-dataset``
-5) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
+3) Run the following command to create a virtual environment and install all main and development dependencies:
+```bash
+uv sync --all-groups
+```
+4) Since we use DVC to track large datasets without bloating the Git history, run the following to pull the data tracked by the project:
+```bash
+dvc pull
+```
+5) If additional raw data needs to be fetched, execute the download script:
+```bash
+sh scripts/download_dataset.sh
+```
+6) We use `invoke` for project orchestration. To verify ones setup run the following:
+```bash
+uv run inv --list
+```
 
 ### Question 5
 
@@ -195,9 +211,11 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 >
 > Answer:
 
-From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis.
+Our project utilized the [mlops_template](https://github.com/SkafteNicki/mlops_template), keeping core structures, including the `src/`, `tests/`, and `notebooks/` directories. We filled out `src/data.py` for ArXiv preprocessing and `src/model.py` for our DistilBERT architecture.
 
-We deviated from the template by adding several project-specific files: `tasks.py` for invoke commands, guide files (`LOGGING_GUIDE.md`, `profiling_guide.md`, `config_guide.md`), a data download script (`curl_arxiv-scientific-research-papers-dataset`), and various output directories. The core template structure was maintained while adding these practical extensions for our specific MLOps workflow.
+However, we modified the projectstructure for production readiness. We replaced the traditional `requirements.txt` with a `pyproject.toml` and `uv.lock` system to leverage the UV package manager. We also removed the standard `docker/` folder in favor of a specialized `dockerfiles/` directory containing multi-stage builds for training, evaluation, and API deployment.
+
+New additions include a `monitoring/` folder for data drift detection, a `scripts/` folder for automation, and a dedicated `app/` directory for our FastAPI implementation. To handle orchestration, we added `tasks.py` file using Invoke, moving away from basic scripts. Finally, we integrated DVC (`.dvc/`) to manage data version control via Google Cloud Storage.
 
 ### Question 6
 
@@ -212,10 +230,11 @@ We deviated from the template by adding several project-specific files: `tasks.p
 >
 > Answer:
 
-We used **ruff** for linting and **black + isort** for formatting, configured through pre-commit hooks in `.pre-commit-config.yaml` with 120-character lines. We also used **type annotations** for typing and **docstrings** for documentation in core modules like `preprocess_data`, `ArXivDataset`, and `MyAwesomeModel`. Documentation is maintained with **MkDocs** and operational guides (LOGGING_GUIDE, profiling_guide).
+Throughout this project, we applied concepts to ensure quality through several automated methods. We implemented **Ruff** for linting, alongside **Black** and **isort** for formatting, all standardized to a 120-character line limit. These tools are integrated into our workflow using pre-commit hooks, ensuring that every commit is checked locally before it reaches the repository. Our GitHub Actions pipeline further automates this process, running these checks across different operating systems (*Ubuntu, Windows, macOS*) to ensure cross-platform compatibility.
 
-In larger projects, these practices makes a difference as consistent formatting reduces PR churn, linting catches bugs early, typing guards against interface regressions during refactors, and written docs preserve shared context for onboarding.
-In general, using these rules for code quality and formatting enables faster and better understanding on code functionality without having to spend time understanding the code format.
+Using **MkDocs** for the `mkdocstrings` plugin was applied to automatically generate our API documentation directly from our source code.
+
+In the context of a large-scale MLOps project, these concepts are essential for collaborative scalability. Without strict formatting and linting, technical debt accumulates quickly as different contributors introduce varying styles, leading to "noisy" code reviews. Explicit typing and comprehensive documentation serve as a crucial knowledge-transfer mechanism; they transform complex scripts into a readable system. For a student project, this discipline ensures that our architectural decisions remain clear over time, preventing bugs during refactoring and making the onboarding process for new team members much more efficient.
 
 ## Version control
 
@@ -336,9 +355,9 @@ An example of a triggered for our workflow can be seen [here](https://github.com
 >
 > Answer:
 
-We used **Hydra** for configuration management with hierarchical YAML config files. The main `config.yaml`(configs/config.yaml) loads default configurations for model, training, and experiments. Specific experiments are defined in *configs/experiment/* folder (`fast.yaml`, `balanced.yaml`, `optimized_distilbert.yaml`, etc.). Each experiment overrides base training parameters like batch_size, epochs, max_samples, and learning rates.
+We managed experiments using **Hydra**, employing a hierarchical YAML structure to separate logic from configuration. A central `config.yaml` defines global defaults, while specialized overrides are stored in `configs/experiment/` (e.g., `fast.yaml`, `sweep_config.yaml`). This modularity allowed us to swap entire training profiles—adjusting batch sizes or learning rates—without altering the source code.
 
-**Example**: To run the fast experiment configuration:
+To run an experiment using e.g. the "fast" configuration, we use:
 ```bash
 uv run src/pname/train.py experiment=fast
 ```
@@ -356,9 +375,14 @@ uv run src/pname/train.py experiment=fast
 >
 > Answer:
 
-We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (PyTorch, NumPy, CUDA) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: 
 
-To reproduce an experiment one would have to: sync dependencies with `uv sync`, fetch versioned data with `dvc pull`, and run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
+Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (*PyTorch, NumPy, CUDA*) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+
+To reproduce an experiment one would have to run the following in the terminal: 
+1) sync dependencies with `uv sync`,
+2) fetch versioned data with `dvc pull`, and 
+3) run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
 
 ### Question 14
 
@@ -377,7 +401,7 @@ To reproduce an experiment one would have to: sync dependencies with `uv sync`, 
 
 Since our full data set is very large and takes a long time to train, we ran a sweep in wandb with a small subset of the data (5000 articles). The purpose of this sweep was to come closer to finding and optimal set of hyperparameters that we could then train the full model on, the sweep config can be found in configs/experiment/sweep_config.yaml. The result of the sweep can be seen in the figure below.
 
-![wandb_sweep_summary](figures/wandb_sweep_summary.png)
+![wandb_sweep_summary](figures/wandb_sweep_summary.jpg)
 
 A rudementary inspection of the features and their repective importance can be seen in the figure below. It reveals that learning rate, subsample, and number of estimators are the most important for accuracy, with the subsample being heavy negatively correlated with accuracy.
 
@@ -400,7 +424,7 @@ The best model (shown in the figure below), had the following config and is what
 >
 > Answer:
 
-For our project we developed three Docker images: *one for training*, *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
+For our project we developed four Docker images: *two for training* (`train.dockerfile` & `train_tfidf.dockerfile`), *one for evaluation*, and *one for API deployment*. Each image is built using UV for dependency management and containerizes different parts of our pipeline. The training image is designed for cloud deployment (Vertex AI) with data accessed via GCS storage, while the evaluation image processes model checkpoints locally.
 
 For example to run the training docker image
 ```bash
