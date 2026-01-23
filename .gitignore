@@ -86,6 +86,7 @@ instance/
 .scrapy
 
 # Sphinx documentation
+docs/
 docs/_build/
 
 # PyBuilder
@@ -213,3 +214,16 @@ training.log
 # Vertex AI config files with secrets
 vertex_ai_example_with_env.yaml
 *_with_env.yaml
+
+# Monitoring generated files
+monitoring/reference_data.parquet
+monitoring/current_data.parquet
+monitoring/drift_report.html
+monitoring/drift_results.json
+monitoring/api_requests.csv
+
+# Generated reports and summaries
+reports/deployment_summary.json
+reports/test_summary.json
+deployment_summary.json
+test_summary.json

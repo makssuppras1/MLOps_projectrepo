@@ -1,0 +1,27 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'buildx'
+      - 'build'
+      - '--platform'
+      - 'linux/amd64'
+      - '-f'
+      - 'dockerfiles/api.dockerfile'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/container-registry/inference-api:latest'
+      - '.'
+      - '--load'
+    id: 'build-api-image'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/container-registry/inference-api:latest'
+    id: 'push-api-image'
+
+images:
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/container-registry/inference-api:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

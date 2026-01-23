@@ -1,4 +1,3 @@
-import pytest
 import torch
 from omegaconf import DictConfig
 
@@ -71,7 +70,6 @@ class TestMyAwesomeModel:
         assert "loss" in output, "Loss should be in output when labels are provided"
         assert output["loss"].item() > 0, f"Loss should be positive, got {output['loss'].item()}"
 
-
     def test_model_output_shapes(self):
         """Test that output tensors have correct shapes."""
         model = MyAwesomeModel()
@@ -99,7 +97,6 @@ class TestMyAwesomeModel:
         ), f"Preds shape mismatch: expected ({batch_size},), got {output['preds'].shape}"
         assert output["loss"].shape == (), f"Loss shape should be scalar (), got {output['loss'].shape}"
 
-
     def test_model_freeze_encoder(self):
         """Test encoder freezing functionality."""
         model = MyAwesomeModel()
@@ -123,7 +120,6 @@ class TestMyAwesomeModel:
         # Classifier should still be trainable
         for param in model.classifier.parameters():
             assert param.requires_grad is True, "Classifier parameters should remain trainable when encoder is frozen"
-
 
     def test_model_num_trainable_params(self):
         """Test trainable parameter counting."""

@@ -1,0 +1,17 @@
+{
+  "features": [
+    {
+      "name": "text_length",
+      "type": "numerical",
+      "description": "Character count of input text"
+    },
+    {
+      "name": "word_count",
+      "type": "numerical",
+      "description": "Number of words in input text"
+    }
+  ],
+  "input_schema": {
+    "text": "string - raw text input (title + abstract)"
+  }
+}

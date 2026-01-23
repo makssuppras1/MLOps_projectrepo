@@ -7,12 +7,14 @@ from pathlib import Path
 import torch
 import typer
 
-try:
-    from google.cloud import storage
+# GCS support removed - using only local and mounted paths
 
-    GCS_AVAILABLE = True
-except ImportError:
-    GCS_AVAILABLE = False
+
+def _extract_typer_default(value, default):
+    """Extract default value from typer OptionInfo if needed, otherwise return value."""
+    if isinstance(value, typer.models.OptionInfo):
+        return default
+    return value
 
 
 def preprocess_data(
@@ -43,6 +45,13 @@ def preprocess_data(
         FileNotFoundError: If no CSV file is found in raw_dir.
         ValueError: If train_split + val_split + test_split != 1.0.
     """
+    # Extract defaults from typer OptionInfo if called directly (not via CLI)
+    train_split = _extract_typer_default(train_split, 0.7)
+    val_split = _extract_typer_default(val_split, 0.15)
+    test_split = _extract_typer_default(test_split, 0.15)
+    seed = _extract_typer_default(seed, 42)
+    num_categories = _extract_typer_default(num_categories, 5)
+
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
 
@@ -217,12 +226,6 @@ def arxiv_dataset(
         processed_dir = gcs_processed_dir
     else:
         processed_dir = local_processed_dir
-
-    # Use GCS mount if available, otherwise use local directory
-    if gcs_mount_path.exists() and (gcs_mount_path / "train_texts.json").exists():
-        print(f"Using Vertex AI GCS mount: {gcs_mount_path}")
-        processed_dir = gcs_mount_path
-    else:
         processed_dir.mkdir(parents=True, exist_ok=True)
 
         # Required files
@@ -234,32 +237,13 @@ def arxiv_dataset(
             "category_mapping.json",
         ]
 
-        # Check if files exist locally, download from GCS if missing
+        # Check if files exist locally
         missing_files = [f for f in required_files if not (processed_dir / f).exists()]
 
-        if missing_files and GCS_AVAILABLE:
-            try:
-                client = storage.Client()
-                bucket = client.bucket(bucket_name)
-
-                for filename in missing_files:
-                    blob_path = f"{gcs_prefix}/{filename}"
-                    blob = bucket.blob(blob_path)
-
-                    if blob.exists():
-                        local_path = processed_dir / filename
-                        blob.download_to_filename(local_path)
-                        print(f"Downloaded {filename} from GCS")
-                    else:
-                        raise FileNotFoundError(f"File {filename} not found in GCS bucket {bucket_name}/{blob_path}")
-            except Exception as e:
-                raise FileNotFoundError(
-                    f"Failed to download data from GCS: {e}. " f"Missing files: {missing_files}"
-                ) from e
-        elif missing_files:
+        if missing_files:
             raise FileNotFoundError(
                 f"Required data files are missing: {missing_files}. "
-                "Install google-cloud-storage to enable automatic download from GCS."
+                "Please ensure data is available in data/processed/ or in GCS mounted paths."
             )
 
     # Load the data files

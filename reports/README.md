@@ -148,7 +148,13 @@ s204634, s204614, s204598
 >
 > Answer:
 
-We used the **Transformers** library from Hugging Face, specifically **DistilBert**, as our base model for text classification tasks on scientific papers. This library provided pre-trained transformer models and tokenizers that significantly accelerated our NLP pipeline development.
+We used two main approaches for our text classification tasks on scientific papers:
+
+1. **Transformers (Hugging Face)**: We used the **DistilBert** model via the Transformers library from Hugging Face as an end-to-end neural text classifier. This library provided pre-trained models and tokenizers, accelerating our NLP pipeline development and enabling us to leverage state-of-the-art contextual embeddings for classification. However it proved hard to find a sweetspot for training on the gcloud that we turned to simpler and older libraries.
+
+2. **TF-IDF + XGBoost**: In addition to deep learning, we implemented a classical pipeline using scikit-learn's **TF-IDF** vectorizer combined with an **XGBoost** classifier. This approach embeds the documents into sparse feature vectors and then uses the gradient boosted tree model for robust classification. Training for this pipeline is handled in our repository via a dedicated script and configuration, allowing us to compare classical and transformer-based methodologies in both local and cloud environments.
+
+Both models and training pipelines are available in our codebase, and can be selected via configuration for experimentation or production use.
 
 ## Coding environment
 
@@ -168,10 +174,10 @@ We used the **Transformers** library from Hugging Face, specifically **DistilBer
 >
 > Answer:
 
-We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to: 
-1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)), 
-2) Clone the repository, 
-3) Run `uv sync` to install all dependencies exactly as specified in the lock file, 
+We used **UV** for managing our dependencies. Our dependencies are defined in the `pyproject.toml` file for main dependencies and dependency-groups for development dependencies. The exact versions are locked in the `uv.lock` file for reproducible builds. To get a complete copy of our development environment, a new team member would need to:
+1) Install UV package manager (following the [official guide](https://docs.astral.sh/uv/getting-started/installation/)),
+2) Clone the repository,
+3) Run `uv sync` to install all dependencies exactly as specified in the lock file,
 4) Download the data to your local repository buy running the following command in the terminal: ``uv run sh curl_arxiv-scientific-research-papers-dataset``
 5) Optionally run `uv sync --group dev` to include development dependencies like pytest, coverage, and pre-commit.
 
@@ -189,7 +195,7 @@ We used **UV** for managing our dependencies. Our dependencies are defined in th
 >
 > Answer:
 
-From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis. 
+From the cookiecutter template [mlops_template](https://github.com/SkafteNicki/mlops_template) we filled out the **src/pname/** folder with core modules including `data.py` for dataset handling, `model.py` for our DistilBert-based model, `train.py` for training procedures, `api.py` for FastAPI implementation, `evaluate.py` for model evaluation, `metrics.py` for performance metrics, `visualize.py` for plotting, and `profiler.py` for performance profiling. The **configs/** folder contains Hydra configuration files: `config.yaml`, `model_conf.yaml`, `training_conf.yaml`, `sweep.yaml`, and experiment-specific configs in the `experiment/` subfolder. We implemented three dockerfiles in **dockerfiles/**: `train.dockerfile`, `evaluate.dockerfile`, and `api.dockerfile`. The **tests/** folder contains unit tests: `test_data.py`, `test_model.py`, `test_training.py`, and `test_api.py`. We kept the **docs/** folder with MkDocs setup and the **notebooks/** folder for analysis.
 
 We deviated from the template by adding several project-specific files: `tasks.py` for invoke commands, guide files (`LOGGING_GUIDE.md`, `profiling_guide.md`, `config_guide.md`), a data download script (`curl_arxiv-scientific-research-papers-dataset`), and various output directories. The core template structure was maintained while adding these practical extensions for our specific MLOps workflow.
 
@@ -280,7 +286,7 @@ Additionally, we set up our GitHub repository to require a **minimum of 2 group 
 > *We did make use of DVC in the following way: ... . In the end it helped us in ... for controlling ... part of our*
 > *pipeline*
 >
-DVC was used for managing the data in our project. We configured DVC with Google Clound Storage (GCS) as our remote storage backend, which allowed us to version control our dataset effectively. For collaboration between team members it offers the advantage of ensuring that everone is working on the same data, for example instead of downloading the dataset and running the preprocessing every time, each team member simply gets the dataset from the cloud. 
+DVC was used for managing the data in our project. We configured DVC with Google Clound Storage (GCS) as our remote storage backend, which allowed us to version control our dataset effectively. For collaboration between team members it offers the advantage of ensuring that everone is working on the same data, for example instead of downloading the dataset and running the preprocessing every time, each team member simply gets the dataset from the cloud.
 
 In truth it might have been overkill to do data version control for this specific dataset as it is static, and the preprocessing was relatively banal and unlikely to change during the project. If our dataset consisted every scientific paper and was updated every time a new paper was published it would definately make data version control a requirement for this project.
 
@@ -309,7 +315,7 @@ The Continuous integration setup consists of 'GitHub Actions' workflows located 
 
 * **Build**: builds Docker images; the job is defined but details are in the same file.
 
-Github's Caching is utilized to store the python packages from the uv.lock file, so that subsequent runs can use the stored packages and skip the process of installing them again. This means that the first run will be relatively lengthy (a couple of minutes) as it has to install all the packages, but subsequent tests can be performed in seconds. The time saved by caching grows exponentially as the number of tests increase. 
+Github's Caching is utilized to store the python packages from the uv.lock file, so that subsequent runs can use the stored packages and skip the process of installing them again. This means that the first run will be relatively lengthy (a couple of minutes) as it has to install all the packages, but subsequent tests can be performed in seconds. The time saved by caching grows exponentially as the number of tests increase.
 
 An example of a triggered for our workflow can be seen [here](https://github.com/makssuppras1/MLOps_projectrepo/actions/runs/21134839770).
 
@@ -389,12 +395,12 @@ For our project we developed three Docker images: *one for training*, *one for e
 For example to run the training docker image
 ```bash
 docker run --name experiment1 --rm train:latest experiment=fast
-``` 
+```
 The evaluation image requires volume access for model and data:
 ```bash
 docker run --rm -v $(pwd)/trained_model.pt:/models/trained_model.pt evaluate:latest
-``` 
-The API image runs our inference service: 
+```
+The API image runs our inference service:
 ```bash
 docker run --rm -p 8000:8000 api:latest
 ```
@@ -435,7 +441,7 @@ We did implement a **profiler.py** module with PyTorch profiler integration and 
 
 ***Google Cloud Storage (GCS)***: Object storage service used to store raw data as well as tranining data, serve as DVC's remote storage for version-controlled datasets, and stage source code for Cloud Build operations.
 
-***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``. 
+***Compute Engine***: Virtual machine service used to create and manage VM instances for running the ML training. The VM is placed in ``europe-west1-d`` to minimize the distrance and therby secure a lower cost. Furthermore, the machine typs is set to ``e2-medium``.
 
 ***Artifact Registry***: Container registry service used to store and version Docker images, enabling image distribution and deployment across the project.
 

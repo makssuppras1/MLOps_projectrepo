@@ -42,6 +42,9 @@ dependencies = [
     "wandb>=0.16.0",
     "scikit-learn>=1.8.0",  # Already included, but explicit for TF-IDF
     "xgboost>=2.0.0",  # XGBoost for gradient boosting
+    "evidently>=0.4.0",  # Data drift monitoring
+    "pandas>=2.0.0",  # Required by Evidently
+    "pyarrow>=10.0.0",  # For parquet support
 ]
 
 [dependency-groups]

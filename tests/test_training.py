@@ -3,7 +3,7 @@ import torch
 from transformers import DistilBertTokenizer
 
 from pname.model import MyAwesomeModel
-from pname.train import set_seed, collate_fn
+from pname.train import collate_fn, set_seed
 
 
 class TestSetSeed:
@@ -136,4 +136,3 @@ class TestTrainingIntegration:
         assert (
             avg_last_steps < avg_first_steps
         ), f"Average loss should decrease over training steps. First 3 steps avg: {avg_first_steps:.6f}, Last 3 steps avg: {avg_last_steps:.6f}. Losses: {[f'{loss:.6f}' for loss in losses]}"
-        

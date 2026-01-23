@@ -75,9 +75,13 @@ The directory structure of the project looks like this:
 │   ├── dependabot.yaml
 │   └── workflows/
 │       └── tests.yaml
+├── ci/                       # CI/CD configuration files
+│   ├── cloudbuild-api.yaml
+│   └── cloudbuild.yaml
 ├── configs/                  # Configuration files
 │   ├── experiment/          # Experiment configs
-│   └── vertex_ai/          # Vertex AI job configs
+│   ├── vertex_ai/          # Vertex AI job configs
+│   └── gcp/                # GCP-specific configs
 ├── data/                     # Data directory
 │   ├── processed
 │   └── raw
@@ -101,7 +105,7 @@ The directory structure of the project looks like this:
 │   └── preflight_check.sh
 ├── models/                   # Trained models
 ├── notebooks/                # Jupyter notebooks
-├── reports/                  # Reports
+├── reports/                  # Reports and generated artifacts
 │   └── figures/
 ├── app/                      # FastAPI application
 │   ├── __init__.py

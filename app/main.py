@@ -1,6 +1,8 @@
 """FastAPI application for model inference."""
 
 import json
+import os
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -8,6 +10,7 @@ import torch
 import typer
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from loguru import logger
 from pydantic import BaseModel
 from transformers import DistilBertTokenizer
@@ -29,6 +32,10 @@ model: Optional[MyAwesomeModel] = None  # Can also be TFIDFXGBoostModel if TFIDF
 tokenizer: Optional[DistilBertTokenizer] = None
 model_type: Optional[str] = None  # "pytorch" or "tfidf"
 class_names: Optional[dict[int, str]] = None  # Mapping of class index to category name
+
+# Request logging for drift monitoring (CSV format)
+REQUEST_LOG_PATH = Path(os.getenv("REQUEST_LOG_PATH", "monitoring/api_requests.csv"))
+REQUEST_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="ArXiv Paper Classifier API",
@@ -218,6 +225,38 @@ async def health() -> dict[str, str]:
     }
 
 
+@app.get("/monitoring", response_class=HTMLResponse)
+async def monitoring() -> HTMLResponse:
+    """Monitoring endpoint returning Evidently HTML report.
+
+    Returns:
+        HTML report showing data drift analysis.
+    """
+    try:
+        from monitoring.drift_monitor import run_drift_monitoring
+
+        # Run drift monitoring
+        result = run_drift_monitoring()
+
+        # Read and return HTML report
+        report_path = Path(result["report_path"])
+        if report_path.exists():
+            with open(report_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+            return HTMLResponse(content=html_content, status_code=200)
+        else:
+            return HTMLResponse(
+                content=f"<h1>Monitoring Report Not Found</h1><p>Report path: {report_path}</p>",
+                status_code=404,
+            )
+    except Exception as e:
+        logger.error(f"Monitoring endpoint error: {e}")
+        return HTMLResponse(
+            content=f"<h1>Monitoring Error</h1><p>{str(e)}</p>",
+            status_code=500,
+        )
+
+
 @app.post("/load")
 async def load_model_endpoint(model_path: str) -> dict[str, str]:
     """Load a model checkpoint.
@@ -253,6 +292,8 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
     if model is None:
         raise HTTPException(status_code=503, detail="Model not loaded. Please load a model first using /load endpoint.")
 
+    # Log will be done after prediction to include outputs
+
     try:
         if model_type == "tfidf":
             # TF-IDF + XGBoost prediction
@@ -274,13 +315,30 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
                 for idx, prob in enumerate(probs_list):
                     class_probs[f"Class {idx}"] = float(prob)
 
-            return PredictionResponse(
+            response = PredictionResponse(
                 predicted_class=pred_class,
                 predicted_class_name=pred_class_name,
                 probabilities=probs_list,
                 class_probabilities=class_probs,
                 confidence=confidence,
             )
+
+            # Log input-output data for monitoring
+            try:
+                import csv
+
+                log_exists = REQUEST_LOG_PATH.exists()
+                with open(REQUEST_LOG_PATH, "a", encoding="utf-8", newline="") as f:
+                    writer = csv.writer(f)
+                    if not log_exists:
+                        writer.writerow(["time", "text_length", "word_count", "predicted_class", "confidence"])
+                    text_len = len(request.text)
+                    word_count = len(request.text.split())
+                    writer.writerow([datetime.now().isoformat(), text_len, word_count, pred_class, confidence])
+            except Exception as e:
+                logger.warning(f"Failed to log for monitoring: {e}")
+
+            return response
         else:
             # PyTorch (DistilBERT) prediction
             if tokenizer is None:
@@ -322,13 +380,30 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
                 for idx, prob in enumerate(probs_list):
                     class_probs[f"Class {idx}"] = float(prob)
 
-            return PredictionResponse(
+            response = PredictionResponse(
                 predicted_class=pred_class,
                 predicted_class_name=pred_class_name,
                 probabilities=probs_list,
                 class_probabilities=class_probs,
                 confidence=confidence,
             )
+
+            # Log input-output data for monitoring
+            try:
+                import csv
+
+                log_exists = REQUEST_LOG_PATH.exists()
+                with open(REQUEST_LOG_PATH, "a", encoding="utf-8", newline="") as f:
+                    writer = csv.writer(f)
+                    if not log_exists:
+                        writer.writerow(["time", "text_length", "word_count", "predicted_class", "confidence"])
+                    text_len = len(request.text)
+                    word_count = len(request.text.split())
+                    writer.writerow([datetime.now().isoformat(), text_len, word_count, pred_class, confidence])
+            except Exception as e:
+                logger.warning(f"Failed to log for monitoring: {e}")
+
+            return response
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
