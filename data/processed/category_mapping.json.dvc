@@ -1,0 +1,5 @@
+outs:
+- md5: 1d7b08d9b99879f8e57834dbf8f40c81
+  size: 196
+  hash: md5
+  path: category_mapping.json

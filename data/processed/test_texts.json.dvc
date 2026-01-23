@@ -1,0 +1,5 @@
+outs:
+- md5: c873efeb1d7ef918cc0d63857effa0e9
+  size: 21554577
+  hash: md5
+  path: test_texts.json
