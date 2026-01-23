@@ -587,16 +587,22 @@ We also focused on reliability by using **Pydantic** to strictly validate incomi
 >
 > Answer:
 
-For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) and a production [Dockerfile](Dockerfile) for cloud deployment.
+For deployment we wrapped our model into a FastAPI application using **uvicorn**. We first tried locally serving the model, which worked via `uv run invoke api` or `uvicorn app.main:app --host 0.0.0.0 --port 8000`. We containerized the API with [api.dockerfile](dockerfiles/api.dockerfile) for both local and cloud deployment.
 
-We have **Docker images** built and pushed to Google Artifact Registry via Cloud Build (as shown in registry and build screenshots). To invoke the service locally, a user would call:
+Beyond basic containerization, we implemented **full Cloud Run deployment** with automated CI/CD. Our [deploy-api.yaml](.github/workflows/deploy-api.yaml) workflow automatically builds and deploys the API to Google Cloud Run when changes are pushed to main. The deployment is also available via Invoke: `uv run invoke deploy-api-to-cloud-run`.
+
+**Cloud Run service configuration**: 2Gi memory, 2 CPU cores, 0-10 auto-scaling instances in `europe-west1` region. To invoke the **production service**, users call:
 ```bash
-curl -X POST "http://localhost:8000/predict" \
+# Get service URL first
+uv run invoke get-api-url
+
+# Then invoke production endpoint (*.run.app URL)
+curl -X POST "https://arxiv-classifier-api-[hash]-[region].run.app/predict" \
   -H "Content-Type: application/json" \
   -d '{"text": "Quantum computing and machine learning applications"}'
 ```
 
-Health checks are available at `/health` and model loading via `/load` endpoint.
+The API supports both local testing (`localhost:8000`) and production Cloud Run deployment with identical endpoints.
 
 ### Question 25
 
