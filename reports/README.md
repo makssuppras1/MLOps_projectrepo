@@ -496,9 +496,11 @@ Regarding performance, we developed a `profiler.py` module that integrates the P
 >
 > Answer:
 
-For this project, we used Google Compute Engine (GCE) to move our computations from a local environment to the cloud. To run the training of our mode, we deployed an ``n1-standard-4`` instance (4 vCPUs, 15 GB memory) in the ``europe-west1-b`` zone.
+We **migrated from Google Compute Engine to Vertex AI** for our cloud training infrastructure. Rather than manually managing VM instances, we use **Vertex AI Custom Training Jobs** which provide managed machine learning infrastructure with automatic resource provisioning and teardown.
 
-To manage our data, we linked the VM to Google Cloud Storage (GCS) using DVC. We configured the VM's service account to securely pull versioned datasets from our bucket (``gs://mlops_project_data_bucket1``) without manual authentication. By using the version_aware setting in our DVC config, we ensured that our data remains organized and accessible within the GCP ecosystem. This setup allows us to treat the VM as a reproducible environment where we can clone our code, run dvc pull to fetch the exact data version needed, and execute training scripts in a scalable cloud infrastructure.
+Our current setup uses multiple machine configurations depending on the training requirements: **n1-highmem-2** for basic CPU training, **n1-standard-4** with **NVIDIA Tesla T4 GPUs** for accelerated training, **e2-standard-4** for balanced workloads, and **e2-highmem-4** (32GB RAM) for memory-intensive TF-IDF training. To optimize costs, we utilize **preemptible instances** in fast training configurations and **SSD boot disks** (pd-ssd, 100GB) for better I/O performance.
+
+The training jobs automatically mount our GCS bucket (`gs://mlops_project_data_bucket1`) at `/gcs/mlops_project_data_bucket1/` and run our custom Docker containers from Artifact Registry. This managed approach eliminated the need for manual VM provisioning, SSH access, and infrastructure maintenance that traditional Compute Engine required.
 
 ### Question 19
 
