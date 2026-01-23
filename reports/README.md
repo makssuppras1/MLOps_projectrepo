@@ -636,9 +636,11 @@ By running Locust against our local Docker container, we confirmed the infrastru
 >
 > Answer:
 
-We did not manage to implement monitoring. Our current static arXiv scientific dataset would not experience data drift since it's not updated. However, if our scientific paper classification system were connected to a live arXiv API where new papers are published daily, monitoring would become critical for application longevity. We would implement monitoring using **Evidently framework** to detect **data drift** when new scientific domains emerge, writing styles evolve, or paper formats change compared to our training data. This would be particularly important as scientific fields rapidly advance and new terminology appears.
+We successfully moved beyond a theoretical plan to implement a functional, production-ready monitoring system using the **Evidently** framework. Our approach focuses on both data drift detection and system performance tracking to ensure the longevity of our ArXiv classifier.
 
-For system monitoring, we would use **Prometheus metrics** to track API request patterns, classification response times, and prediction confidence distributions. We would monitor for **concept drift** where the relationship between paper content and categories shifts over time, and **target drift** where the distribution of paper categories changes (e.g., sudden increase in AI/ML papers). Alert systems would notify us when drift scores exceed thresholds, triggering model retraining workflows to maintain classification accuracy as the scientific landscape evolves. This monitoring infrastructure would ensure our paper classification system adapts to the dynamic nature of academic publishing.
+To make this possible, we built a production-grade logging pipeline that captures every API request—including text features, predicted classes, confidence scores, and latency — and flushes them to GCS. We then developed a `drift_monitor.py` module that compares this live data against our `reference_data.parquet` baseline.
+
+The "something special" in our implementation is the dedicated `/monitoring` endpoint in our FastAPI application. This endpoint generates and serves live Evidently HTML reports in real-time, allowing us to visualize shifts in the scientific landscape, such as the emergence of new terminology. By tracking these metrics, we can identify when the model's environment has changed enough to require a retraining workflow, ensuring our classification remains accurate even as academic publishing evolves.
 
 ## Overall discussion of project
 
