@@ -355,9 +355,9 @@ An example of a triggered for our workflow can be seen [here](https://github.com
 >
 > Answer:
 
-We used **Hydra** for configuration management with hierarchical YAML config files. The main `config.yaml`(configs/config.yaml) loads default configurations for model, training, and experiments. Specific experiments are defined in *configs/experiment/* folder (`fast.yaml`, `balanced.yaml`, `optimized_distilbert.yaml`, etc.). Each experiment overrides base training parameters like batch_size, epochs, max_samples, and learning rates.
+We managed experiments using **Hydra**, employing a hierarchical YAML structure to separate logic from configuration. A central `config.yaml` defines global defaults, while specialized overrides are stored in `configs/experiment/` (e.g., `fast.yaml`, `sweep_config.yaml`). This modularity allowed us to swap entire training profiles—adjusting batch sizes or learning rates—without altering the source code.
 
-**Example**: To run the fast experiment configuration:
+To run an experiment using e.g. the "fast" configuration, we use:
 ```bash
 uv run src/pname/train.py experiment=fast
 ```
