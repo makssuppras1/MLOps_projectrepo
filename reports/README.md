@@ -520,7 +520,7 @@ The training jobs automatically mount our GCS bucket (`gs://mlops_project_data_b
 >
 > Answer:
 
-![registry_20012026](figures/registry_20012026.png)
+![GCP_artifact-registry](figures/GCP_artifact-registry.png)
 
 ### Question 21
 
