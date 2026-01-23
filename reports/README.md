@@ -252,13 +252,8 @@ In the context of a large-scale MLOps project, these concepts are essential for 
 > *application but also ... .*
 >
 > Answer:
-I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_training) with the focus on testing the code for our data, model and train scripts.
 
-*test_data.py* focuses on the data processing/preprocessing pipeline; Validating that the ArXivDataset classes are initialized correctly, that the expected output files are created, that the train/val/tests split ratios are correct, and checks that the category-to-label mapping are created correctly for classification.
-
-*test_model.py* focuses on model architecture and behavior; Initialization, forward passes, output validation, encoder freezing, parameter counting, and gradient flow.
-
-*test_training.py* focuses on training pipeline and reproducibility; Seed reproducibility, batch collation, and training dynamics.
+In total we have implemented **18 tests** covering our core MLOps pipeline. *test_data.py* (2 tests) validates preprocessing creates correct output files and split ratios. *test_model.py* (4 tests) tests PyTorch model initialization, forward passes, encoder freezing, and gradient flow. *test_training.py* (2 tests) ensures reproducibility via seed setting and loss reduction. *test_tfidf_pipeline.py* (5 tests) validates TF-IDF+XGBoost pipeline assembly, save/load, backward compatibility, early stopping, and data leakage prevention. *test_train_tfidf_pipeline.py* (3 tests) tests the TF-IDF training script for artifact generation, epochs-to-estimators mapping, and validation-free training. *test_apis.py* (1 test) validates API prediction endpoint. *test_drift.py* (1 test) tests drift monitoring infrastructure.
 
 ### Question 8
 
@@ -273,9 +268,13 @@ I total we have made 17 tests (5 in test_data, 8 in test_model, 4 in test_traini
 >
 > Answer:
 
-The total code coverage of our code is **48%**, covering 136 out of 285 total statements across our main modules. We are far from 100% coverage, and even if we achieved 100%, we would not trust it to be completely error-free. Code coverage is a quantitative metric showing which lines were executed during testing, but doesn't guarantee test quality or correctness. High coverage can provide false confidence if tests only verify code execution.
+The total code coverage of our code is **43%**, covering 566 out of 996 total statements across our main modules. We are pretty far away from 100% code coverage, but even if we had 100% it would still not mean that edge cases would be accounted for. Code coverage is a fine metric to see if all code is covered by some kind of test, but not a good metric to indicate if all *scenarios* are covered.
 
-Our current coverage breakdown shows: `data.py` at 61%, `model.py` at 71%, and `train.py` at 27%. This indicates good coverage of our core data processing and model functionality, but limited coverage of the training pipeline. Coverage doesn't account for edge cases, integration issues, or logical errors in test assertions themselves. Modules like API, evaluation, and visualization remain completely untested, representing areas for test suite expansion.
+Our current coverage breakdown shows: `data.py` at 47%, `model.py` at 62%, `model_tfidf.py` at 67%, `train.py` at 12%, and `train_tfidf.py` at 63%.
+
+Notice that there are two model and train coverages because of the legacy `model.py` which we were forced to abandon.
+
+
 
 ### Question 9
 

@@ -4,6 +4,7 @@ import json
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -56,12 +57,6 @@ ENABLE_GCS_LOGGING = os.getenv("ENABLE_GCS_LOGGING", "true").lower() == "true"
 # In-memory buffer for batch GCS uploads
 _log_buffer: list[dict] = []
 _log_buffer_size = int(os.getenv("LOG_BUFFER_SIZE", "10"))  # Upload every N requests
-
-app = FastAPI(
-    title="ArXiv Paper Classifier API",
-    description="API for classifying ArXiv papers using DistilBERT or TF-IDF + XGBoost",
-    version="1.0.0",
-)
 
 
 class PredictionRequest(BaseModel):
@@ -268,15 +263,8 @@ def load_class_names() -> Optional[dict[int, str]]:
     return {i: f"Class {i}" for i in range(5)}
 
 
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Flush remaining logs to GCS on shutdown."""
-    _flush_log_buffer()
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize model on startup."""
+def _auto_load_model() -> None:
+    """Initialize class names and attempt to auto-load a model."""
     global class_names
 
     project_root = Path(__file__).parent.parent
@@ -286,31 +274,23 @@ async def startup_event() -> None:
 
     # Try to load model from common locations (check both .pt and .pkl)
     model_paths = [
-        # Current directory
         Path("trained_model.pt"),
         Path("trained_model.pkl"),
-        # Project root
         project_root / "trained_model.pt",
         project_root / "trained_model.pkl",
-        # WandB artifacts (TF-IDF model)
         project_root / "artifacts" / "model-tfidf-fbomdu0l:v0" / "trained_model.pkl",
-        # WandB artifacts (PyTorch model)
         project_root / "artifacts" / "model-a5yv5hjp:v0" / "trained_model.pt",
-        # Outputs directory
         Path("/outputs/trained_model.pt"),
         Path("/outputs/trained_model.pkl"),
-        # GCS mounts (if available)
         Path("/gcs/mlops_project_data_bucket1-europe-west1/experiments/tfidf_xgboost/model/trained_model.pkl"),
         Path("/gcs/mlops_project_data_bucket1-europe-west1/trained_model.pt"),
     ]
 
-    # Also check for any model in artifacts folder
     artifacts_dir = project_root / "artifacts"
     if artifacts_dir.exists():
         for artifact_path in artifacts_dir.rglob("trained_model.*"):
-            if artifact_path.suffix in [".pt", ".pkl"]:
-                if artifact_path not in model_paths:
-                    model_paths.append(artifact_path)
+            if artifact_path.suffix in [".pt", ".pkl"] and artifact_path not in model_paths:
+                model_paths.append(artifact_path)
 
     logger.info(f"Checking {len(model_paths)} locations for model auto-loading...")
     for model_path in model_paths:
@@ -325,6 +305,23 @@ async def startup_event() -> None:
                 continue
 
     logger.info("No model found in default locations. Load model manually via /load endpoint")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _auto_load_model()
+    try:
+        yield
+    finally:
+        _flush_log_buffer()
+
+
+app = FastAPI(
+    title="ArXiv Paper Classifier API",
+    description="API for classifying ArXiv papers using DistilBERT or TF-IDF + XGBoost",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 
 @app.get("/")

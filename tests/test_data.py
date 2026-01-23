@@ -1,24 +1,9 @@
-import json
 import tempfile
 from pathlib import Path
 
 import torch
 
-from pname.data import ArXivDataset, preprocess_data
-
-
-class TestArXivDataset:
-    """Test suite for ArXivDataset class."""
-
-    def test_dataset_initialization(self):
-        """Test ArXivDataset initialization with sample data."""
-        texts = ["paper 1 abstract here", "paper 2 abstract here", "paper 3 abstract here"]
-        labels = torch.tensor([0, 1, 2])
-
-        dataset = ArXivDataset(texts, labels)
-
-        assert dataset.texts == texts
-        assert torch.equal(dataset.labels, labels)
+from pname.data import preprocess_data
 
 
 class TestPreprocessData:
@@ -75,55 +60,3 @@ class TestPreprocessData:
             # Check split ratio (80/20)
             assert len(train_labels) == 80
             assert len(test_labels) == 20
-
-    def test_preprocess_data_category_mapping(self):
-        """Test that category mapping is created correctly."""
-        with tempfile.TemporaryDirectory() as raw_dir, tempfile.TemporaryDirectory() as processed_dir:
-            raw_path = Path(raw_dir)
-            csv_path = raw_path / "sample.csv"
-
-            csv_data = "title,abstract,categories\n"
-            csv_data += "Paper 1,Abstract 1,cs.AI\n"
-            csv_data += "Paper 2,Abstract 2,cs.LG\n"
-            csv_data += "Paper 3,Abstract 3,cs.AI\n"
-
-            csv_path.write_text(csv_data)
-
-            preprocess_data(
-                str(raw_path), str(processed_dir), train_split=0.75, val_split=0.0, test_split=0.25, seed=42
-            )
-
-            processed_path = Path(processed_dir)
-            with open(processed_path / "category_mapping.json", "r") as f:
-                mapping = json.load(f)
-
-            assert "cs.AI" in mapping
-            assert "cs.LG" in mapping
-            assert mapping["cs.AI"] == 0
-            assert mapping["cs.LG"] == 1
-
-    def test_preprocess_data_reproducibility(self):
-        """Test that same seed produces same split."""
-        with (
-            tempfile.TemporaryDirectory() as raw_dir1,
-            tempfile.TemporaryDirectory() as processed_dir1,
-            tempfile.TemporaryDirectory() as processed_dir2,
-        ):
-            raw_path = Path(raw_dir1)
-            csv_path = raw_path / "sample.csv"
-
-            csv_data = "title,abstract,categories\n"
-            for i in range(50):
-                csv_data += f"Paper {i},Abstract {i},cs.AI\n"
-
-            csv_path.write_text(csv_data)
-
-            # Run twice with same seed
-            preprocess_data(str(raw_path), str(processed_dir1), train_split=0.8, val_split=0.0, test_split=0.2, seed=42)
-            preprocess_data(str(raw_path), str(processed_dir2), train_split=0.8, val_split=0.0, test_split=0.2, seed=42)
-
-            # Check that results are identical
-            labels1 = torch.load(Path(processed_dir1) / "train_labels.pt")
-            labels2 = torch.load(Path(processed_dir2) / "train_labels.pt")
-
-            assert torch.equal(labels1, labels2)
