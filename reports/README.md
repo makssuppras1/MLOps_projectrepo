@@ -509,7 +509,9 @@ The training jobs automatically mount our GCS bucket (`gs://mlops_project_data_b
 >
 > Answer:
 
-![bucket_20012026](figures/bucket_20012026.png)
+![GCP_bucket1](figures/GCP_bucket1.png)
+
+![GCP_bucket2](figures/GCP_bucket2.png)
 
 ### Question 20
 
