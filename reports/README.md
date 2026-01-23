@@ -375,9 +375,14 @@ uv run src/pname/train.py experiment=fast
 >
 > Answer:
 
-We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (PyTorch, NumPy, CUDA) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+We made use of Hydra configuration files with hierarchical YAML structure for experiments. Whenever an experiment is run the following happens: 
 
-To reproduce an experiment one would have to: sync dependencies with `uv sync`, fetch versioned data with `dvc pull`, and run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
+Hydra automatically logs the complete configuration to timestamped folders, random seeds are set across all generators (*PyTorch, NumPy, CUDA*) for deterministic results, Weights & Biases tracks all hyperparameters and training metrics with unique run names, and models are saved with full reproducibility information. Additionally, UV manages exact dependency versions, DVC ensures consistent datasets via cloud storage, and Docker containers provide identical execution environments.
+
+To reproduce an experiment one would have to run the following in the terminal: 
+1) sync dependencies with `uv sync`,
+2) fetch versioned data with `dvc pull`, and 
+3) run the training script with the desired experiment configuration using `uv run src/pname/train.py experiment=<name>`.
 
 ### Question 14
 
