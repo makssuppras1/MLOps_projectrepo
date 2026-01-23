@@ -401,7 +401,7 @@ To reproduce an experiment one would have to run the following in the terminal:
 
 Since our full data set is very large and takes a long time to train, we ran a sweep in wandb with a small subset of the data (5000 articles). The purpose of this sweep was to come closer to finding and optimal set of hyperparameters that we could then train the full model on, the sweep config can be found in configs/experiment/sweep_config.yaml. The result of the sweep can be seen in the figure below.
 
-![wandb_sweep_summary](figures/wandb_sweep_summary.png)
+![wandb_sweep_summary](figures/wandb_sweep_summary.jpg)
 
 A rudementary inspection of the features and their repective importance can be seen in the figure below. It reveals that learning rate, subsample, and number of estimators are the most important for accuracy, with the subsample being heavy negatively correlated with accuracy.
 
